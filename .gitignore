@@ -1,0 +1,15 @@
+node_modules
+dist
+
+# Jason's personal scores: local use only, never commit (MUSIC.md)
+public/scores/
+
+# local secrets and tool caches
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+
+# Playwright failure artifacts
+test-results/
+playwright-report/

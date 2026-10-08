@@ -1,0 +1,24 @@
+/* Colours from the agreed play-screen mockup (ROADMAP Phase 0). */
+:root {
+  color-scheme: dark;
+  --stage: #14121c;
+  --stage-2: #1d1a29;
+  --line: #3b3650;
+  --ink: #ece6d8;
+  --dim: #9a94ae;
+  --right: #f2b84b;
+  --left: #6fb7e9;
+  --miss: #ef6a5b;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--stage);
+  color: var(--ink);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.shell { padding: 48px 24px; }
+.shell p { color: var(--dim); }

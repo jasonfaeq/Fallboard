@@ -1,0 +1,96 @@
+# Roadmap
+
+Pick the next unchecked item in the lowest open phase. Items marked 🔀 can run in parallel
+with others in the same phase (different files). Tick the box and add the date when done;
+note anything that needs a hardware test.
+
+## Phase 0 — Scaffold (done 2026-10-09)
+
+- [x] Direction + docs (`AGENTS.md`, `docs/`) — 2026-10-04
+- [x] **Jason answers the open questions** in VISION.md (keyboard, level, goal pieces) —
+      2026-10-09. Still open: which Bach C minor prelude.
+- [x] **Play-screen mockup** agreed with Jason before any UI code (D-13) — 2026-10-09,
+      "fine for now": https://claude.ai/artifact/2iqCk2CmCB383DTbK965LB (staff on top under a
+      fixed playhead, falling notes onto 88 keys below, one control strip; gold = right hand,
+      blue = left, red = miss).
+- [x] **Git repo** initialised; `.gitignore` covers `node_modules`, `dist`, `test-results`
+      and the personal scores folder — 2026-10-09 (branch `main`, nothing committed yet).
+- [x] **Project setup copied from DJ Trainer** (PORTING.md › Copy): `package.json`, Vite and
+      TypeScript config, `index.html`, `start.bat`, Playwright config on Edge, `tools/brief.mjs`,
+      the `.claude` hooks. An empty app that builds, and one passing test that opens it —
+      2026-10-09. Tests run on port 4183. `tools/validate.mjs` is a placeholder until
+      `game/validate.ts` exists.
+
+## Phase 1 — The piece player (D-13)
+
+One real piece, both hands, from keyboard to results: Chopin's Prelude in E minor.
+
+- [ ] 🔀 **Input**: Web MIDI note on/off, velocity and sustain pedal as `NoteEvent`s;
+      computer-keyboard fallback; MIDI monitor screen (KEYBOARD.md).
+      *Needs hardware test: the DEP-20 in the monitor.*
+- [ ] 🔀 **Engine**: `Transport` on the audio clock (tempo, `beatAt`, rate, pause/resume),
+      metronome clicks, the sampled piano voice after its licence check (D-14).
+- [ ] 🔀 **Score model** + the text notation (two hands, chords, ties, accidentals), and the
+      first piece transcribed by hand (D-15). *Needs Jason: listen and confirm the notes.*
+- [ ] **Staff rendering spike** → a new decision (D-08): a grand staff with a playhead and
+      per-note hit/miss colours.
+- [ ] **Play screen**, built to the agreed mockup: staff, optional falling notes and
+      88-key keyboard (the view toggle), tempo 50–100 %, section loop.
+- [ ] **Modes**: Listen, Wait, Play in time, Play with guide — as the templates `listen`,
+      `playWait`, `playInTime` (guide is a setting on the last two).
+- [ ] **Mission engine**: snapshot, matcher, steps, scoring, runner, level flow (count-in →
+      steps → ending → results), bot runner, validator (MISSIONS.md); results screen.
+- [ ] **Test harness**: the bot plays the piece through the input path and gets ≥ ★★.
+- [ ] **Latency check with Jason**: play the piece on the DEP-20; decide whether a
+      calibration setting is needed. *Needs hardware test.*
+
+## Phase 2 — More pieces, then Venue 1
+
+- [ ] 🔀 Bach, Prelude in C minor (once Jason says which one).
+- [ ] 🔀 Beethoven, "Moonlight" Sonata, 1st movement (triplets, pedal marks).
+- [ ] The piece ladder: sections, hands separate, wait → slow → at tempo (`definePiece`);
+      progress (XP, stars), with the view setting the XP multiplier (D-04).
+- [ ] Trouble-spot practice: loop the bars with the most misses.
+- [ ] Career map (venues, unlocks, stars per venue) — rules copied from DJ Trainer.
+- [ ] 🔀 Templates `pressKeys`, `tapRhythm`, `readNote`.
+- [ ] 🔀 Venue 1 missions (CURRICULUM.md), each with a bot.
+- [ ] **Recital mode**: programme of pieces, one take each, crowd meter, streak, encore,
+      per-piece results; `perform` template. Recital 1.12 "For the Family".
+
+## Phase 3 — Both hands: venues 2–3
+
+- [ ] Left hand and bass clef on the staff, the falling notes and the keyboard.
+- [ ] Hands-together matching (which hand was late; chord spread).
+- [ ] The game plays the other hand as accompaniment while one hand practises.
+- [ ] 🔀 Venue 2 missions + Recital "Family Party"
+- [ ] 🔀 Venue 3 missions + Recital "School Recital"
+- [ ] `sightRead` challenge template (unseen bars, one take).
+
+## Phase 4 — Look & feel
+
+- [ ] Play-screen polish: staff engraving quality, falling-notes look, crowd visual.
+- [ ] SFX: applause, hit/miss feedback that never covers the playing.
+- [ ] Results animation and level-up moment (pattern from DJ Trainer).
+
+## Phase 5 — Musicality + venues 4–5
+
+- [ ] Scoring for dynamics, note length (legato/staccato), sustain pedal, tempo steadiness.
+- [ ] Key signatures, scales, chords and accompaniment patterns in the Score model and staff.
+- [ ] Venue 4 and 5 missions + recitals.
+
+## Phase 6 — Your music
+
+- [ ] MusicXML (and MIDI) import → Score; mark hands and sections in an editor screen.
+- [ ] Free Play with a post-play report; "learn this piece" ladder for imported pieces.
+
+## Phase 7 — Advanced
+
+- [ ] Lead sheets and chord symbols; playing by ear (`echo` template); Venue 6.
+- [ ] Technique venue (scales, arpeggios, speed) and the Concert Hall; performing from memory.
+- [ ] Free-tempo performance (the game follows the player).
+
+## Phase 8 — Commercial (only if it works for Jason)
+
+- [ ] Content audit: every shipped piece and sound has a licence that allows a paid app.
+- [ ] Platform layer → Tauri desktop build with native low-latency audio, Steamworks.
+- [ ] Paid web version + licensing/payments.
