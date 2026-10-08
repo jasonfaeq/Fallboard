@@ -1,8 +1,9 @@
 # Architecture
 
 **Status (2026-10-09): mostly planned.** Built so far: `engine/input.ts` (every input goes
-through `Input.send`; `window.__piano = { input, send }`), `ui/Keyboard.tsx`,
-`ui/MidiMonitor.tsx`, and the VexFlow staff spike `ui/StaffSpike.tsx` (D-16). The rest is the
+through `Input.send`; `window.__piano = { input, engine, send }`), `ui/Keyboard.tsx`,
+`ui/MidiMonitor.tsx`, the VexFlow staff spike `ui/StaffSpike.tsx` (D-16), and the audio
+engine/monitor described below (D-17). The rest is the
 target shape, taken from DJ Trainer's proven structure and adapted to notes. Keep this file true: when you build a part,
 describe how it actually works and drop the word "planned".
 
@@ -24,7 +25,7 @@ describe how it actually works and drop the word "planned".
                React UI (App.tsx, ui/*) — Staff, falling notes, on-screen keyboard, HUD
 ```
 
-Event order for every input: `Input.emit` → App `dispatch(ev)` → engine (sound the note) →
+Event order for every input: `Input.send` → App's listener → engine (sound the note) →
 `run.onEvent(ev)` (the mission judges it). Bots send through the same `dispatch` (exposed as
 `window.__piano.send`).
 
@@ -58,8 +59,8 @@ around the steps: `countIn` → `steps` → `ending` → `done`.
 
 | File | Responsibility |
 |---|---|
-| `engine/audio.ts` | `Engine` (AudioContext with `latencyHint: 'interactive'`, limiter, metronome) and `Transport` (tempo, rate, `beatAt`, `timeAtBeat`, pause/resume) |
-| `engine/piano.ts` | the piano voice: note on/off with velocity and sustain; first synthesised (D-09) |
+| `engine/audio.ts` | built: `Engine` (AudioContext with `latencyHint: 'interactive'`, limiter, metronome) and `Transport` (tempo, rate, `beatAt`, `timeAtBeat`, pause/resume) |
+| `engine/piano.ts` | built: sampled Salamander voice, velocity gain, per-source sustain and note release (D-17) |
 | `engine/score.ts` | `Score` (notes with pitch, start, length, hand, finger; bars, time and key signature, tempo, sections) and the small text notation |
 | `engine/input.ts` | Web MIDI (hot-plug), `NoteEvent`s, sustain pedal, key-range setup, MIDI monitor log, computer-keyboard fallback. All MIDI numbers live here |
 | `game/core.ts` | shared types: `Hud`, `Run`, `Assist`, `gradeMs` |
@@ -83,6 +84,36 @@ around the steps: `countIn` → `steps` → `ending` → `done`.
 | `App.tsx` | screens, game loop (`requestAnimationFrame`) |
 
 `src/engine/` knows nothing about React or missions; `src/game/` nothing about the DOM.
+
+## Audio engine (as built, 2026-10-09)
+
+`engine/audio.ts` owns a gesture-started `AudioContext`, with `latencyHint: 'interactive'`,
+master gain and a dynamics compressor configured as a limiter. `Transport` reads only its
+audio-clock callback: tempo/rate changes re-anchor without jumping; `seek` accepts negative
+count-in beats; `pause(beat)` pins an exact wait beat. `timeAtBeat` returns null while paused.
+Tempo must be positive and practice rate is 0.5–1. There is no score scheduler yet.
+
+The 4/4 metronome schedules clicks 100 ms ahead, waking every 25 ms. A transport revision
+cancels queued clicks and computes the next integer beat again; late wake-ups skip old
+beats. Neither the timer nor the UI's animation frame is a musical clock.
+
+`Engine.audioTime(t)` pairs the current performance and audio clocks to preserve the input
+timestamp. `heardBeat(t)` subtracts the browser's reported base + output latency as above.
+This is a browser estimate; calibration and real DEP-20 latency still need a hardware test.
+
+`engine/piano.ts` fetches/decode-loads 30 local MP3s as one atomic bank; a failed load is
+reported and can be retried. Nearest-sample playback covers A0–C8, with velocity gain and a
+350 ms release. Key, MIDI and bot sources have separate held-note/pedal state; repeated
+attacks and released tails are tracked separately. Maximum polyphony is 96. The single
+sample layer has no velocity timbre changes, pedal noises or string resonance (MUSIC.md).
+
+App dispatches all input to the engine before any future runner. MIDI player notes default
+to muted for the DEP-20's own speakers; the computer keyboard and bot always sound.
+`ui/AudioMonitor.tsx` offers enable/retry, a C-major test chord, metronome, tempo/rate,
+pause/resume, stop-all and own-sound controls alongside the existing monitor/staff spike.
+Own-sound is session-only for now. Window blur, a suspended context and teardown silence
+voices and stop the transport/metronome. The final play screen and persistent setup are
+still later items.
 
 ## Persistence (localStorage, per browser)
 
@@ -114,6 +145,10 @@ speed on the audio clock, so keep test pieces short.
 
 Headless tests verify software behaviour. Velocity range, pedal polarity, latency and how a
 mission feels under the fingers still **need hardware test**.
+
+Audio tests exercise Transport with a deterministic clock, the real input path in Edge,
+offline rendering of the bundled samples (audibility, velocity, sustain/release, range and
+transposition), metronome audio scheduling, timestamp conversion and failed-load retry.
 
 ## Known risks
 

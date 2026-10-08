@@ -21,6 +21,15 @@ export const MIDDLE_C = 60
 /** an 88-key piano: A0–C8 */
 export const PIANO_LOW = 21
 export const PIANO_HIGH = 108
+export const MAX_VELOCITY = MAX_VALUE
+
+/** Sample filenames use scientific pitch names; keep their MIDI conversion here. */
+export function noteNumber(name: string) {
+  const match = /^([A-G])(s?)(\d)$/.exec(name)
+  if (!match) throw new Error(`Invalid pitch: ${name}`)
+  const offsets: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
+  return (Number(match[3]) + 1) * 12 + offsets[match[1]] + (match[2] ? 1 : 0)
+}
 
 const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B']
 export const noteName = (note: number) => `${NAMES[note % 12]}${Math.floor(note / 12) - 1}`

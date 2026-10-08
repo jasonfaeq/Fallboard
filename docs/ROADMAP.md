@@ -14,7 +14,8 @@ note anything that needs a hardware test.
       fixed playhead, falling notes onto 88 keys below, one control strip; gold = right hand,
       blue = left, red = miss).
 - [x] **Git repo** initialised; `.gitignore` covers `node_modules`, `dist`, `test-results`
-      and the personal scores folder — 2026-10-09 (branch `main`, nothing committed yet).
+      and the personal scores folder — 2026-10-09 (branch `main`, scaffold `0266f2c`,
+      input/staff `7a37be8`).
 - [x] **Project setup copied from DJ Trainer** (PORTING.md › Copy): `package.json`, Vite and
       TypeScript config, `index.html`, `start.bat`, Playwright config on Edge, `tools/brief.mjs`,
       the `.claude` hooks. An empty app that builds, and one passing test that opens it —
@@ -28,8 +29,10 @@ One real piece, both hands, from keyboard to results: Chopin's Prelude in E mino
 - [x] 🔀 **Input**: Web MIDI note on/off, velocity and sustain pedal as `NoteEvent`s;
       computer-keyboard fallback; MIDI monitor screen (KEYBOARD.md) — 2026-10-09.
       *Needs hardware test: the DEP-20 in the monitor (KEYBOARD.md › Needs hardware test).*
-- [ ] 🔀 **Engine**: `Transport` on the audio clock (tempo, `beatAt`, rate, pause/resume),
-      metronome clicks, the sampled piano voice after its licence check (D-14).
+- [x] 🔀 **Engine**: `Transport` on the audio clock (tempo, `beatAt`, rate, pause/resume),
+      metronome clicks, the sampled piano voice after its licence check (D-14/D-17) —
+      2026-10-09. Audio monitor controls and local samples; no new dependency.
+      *Needs hardware test: piano quality, sustain and output delay on the DEP-20.*
 - [ ] 🔀 **Score model** + the text notation (two hands, chords, ties, accidentals), and the
       first piece transcribed by hand (D-15). *Needs Jason: listen and confirm the notes.*
 - [x] **Staff rendering spike** → VexFlow (D-16) — 2026-10-09. Drawn: grand staff, per-note

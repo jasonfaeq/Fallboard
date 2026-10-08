@@ -105,3 +105,14 @@ note, beam and ledger line needs its colour set, or it is drawn black. The singl
 grew to about 880 KB. *It gives real engraving (beams, ledger lines, accidentals, clefs) for
 a few lines of our code; writing that for the Moonlight's triplets would take far longer.*
 (Closes the open question in D-08.)
+
+**D-17 · 2026-10-09 · Local Salamander sample bank** — D-14's licence check passed:
+the original archive's metadata (https://archive.org/metadata/SalamanderGrandPianoV3) names
+Alexander Holm and CC BY 3.0; the Creative Commons licence permits commercial redistribution
+with attribution. Bundle Tonejs/audio's 30-note MP3 conversion at commit
+`efd8296360f9526e379bfbe5c1698ff54d6a1d34`, with the original README, source/hash manifest,
+notice and UI credit. CC BY is an asset licence, separate from D-10's code dependency rule.
+Use native Web Audio playback, nearest-sample transposition, velocity gain and sustain.
+*About 2 MB, works locally with no runtime CDN or new dependency. This first voice uses one
+recorded layer; the full 16-layer library and resonance are not implemented. Jason still
+needs to judge its sound/latency on the DEP-20.*

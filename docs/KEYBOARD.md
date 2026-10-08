@@ -2,8 +2,9 @@
 
 How the game hears the player. **Status (2026-10-09): built** — `src/engine/input.ts` and the
 MIDI monitor (`src/ui/MidiMonitor.tsx`), tested with the computer keyboard and with raw MIDI
-bytes, **not yet with a real keyboard**. Not built: the key-range setup step and the own-sound
-setting. The MIDI facts below are from the MIDI standard; what Jason's keyboard actually
+bytes, **not yet with a real keyboard**. The audio monitor now has an own-sound checkbox
+(session-only, defaults on); the key-range setup and persistent setup are still not built.
+The MIDI facts below are from the MIDI standard; what Jason's keyboard actually
 sends is unknown until he runs the MIDI monitor.
 
 ## Jason's keyboard
@@ -49,6 +50,11 @@ missions and pieces that don't fit are shown as "needs more keys".
 ## Does the keyboard make its own sound?
 
 A setting, asked once at setup:
+
+As built before setup exists: enable sound in the audio monitor, then use its
+"My MIDI keyboard makes its own sound" checkbox. It defaults on for the DEP-20. Computer
+keys and bot demos always use the game's sampled voice. Enabling own sound silences any
+MIDI voices already playing. The setting is not yet saved between page loads.
 
 - **Yes (digital piano, or a keyboard with speakers):** the player hears their own notes from
   the keyboard with no delay. The game does **not** sound the player's notes (they would be

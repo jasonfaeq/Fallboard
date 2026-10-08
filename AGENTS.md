@@ -17,7 +17,8 @@ same idea for DJing. That repo is the **read-only reference** for how things are
 (mission engine, bots, level flow, tests) — see `docs/PORTING.md`. Never edit it from here.
 
 **State (2026-10-09): Phase 1 started.** Built: MIDI input, the MIDI monitor screen and a
-staff-rendering spike (VexFlow, D-16). No audio, score model, game logic or content yet, so
+staff-rendering spike (VexFlow, D-16), audio-clock Transport, metronome and sampled piano
+(D-17). No score model, game logic or content yet, so
 most of `docs/` is still the plan. The job is ROADMAP Phase 1, the piece player (D-13). When you build something, change its doc from "planned" to
 "as built" so the docs stay true.
 

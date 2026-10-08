@@ -57,3 +57,13 @@ button {
 .log td { padding: 4px 12px 4px 0; border-bottom: 1px solid var(--stage-2); }
 .log .bytes { font-family: Consolas, monospace; color: var(--dim); width: 9ch; }
 .log .time { color: var(--dim); text-align: right; padding-right: 0; }
+
+.audio-monitor { border: 1px solid var(--line); border-radius: 6px; padding: 16px; margin-bottom: 24px; }
+.audio-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.audio-controls input { width: 5ch; }
+.audio-controls input, .audio-controls select { font: inherit; color: var(--ink); background: var(--stage-2); border: 1px solid var(--line); border-radius: 4px; padding: 5px; }
+.own-sound { display: block; margin-top: 16px; }
+.audio-monitor .hint, .audio-monitor small { color: var(--dim); }
+.audio-facts { font-variant-numeric: tabular-nums; }
+.audio-monitor a { color: var(--left); }
+button:disabled { opacity: 0.5; cursor: default; }

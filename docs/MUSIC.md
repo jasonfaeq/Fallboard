@@ -1,7 +1,7 @@
 # Music — pieces, scores, sound, licensing
 
-**Status (2026-10-04): planned.** Unlike DJ Trainer there are no audio files and no song
-analysis: a piece is note data, and the game makes the sound.
+**Status (2026-10-09): score/content planned; sampled piano built (D-17).** Unlike DJ Trainer
+there is no song analysis: a piece is note data, played through the piano's bundled samples.
 
 ## The Score model (D-08)
 
@@ -59,18 +59,27 @@ renders ABC text), or our own drawing limited to beginner scores. **Not allowed:
 
 ## Piano sound (D-14, supersedes D-09)
 
-- **From Phase 1:** a sampled grand piano. Check the sample set's licence allows bundling in
-  a paid app, and record it as a decision. One known candidate is the Salamander Grand Piano
-  (CC BY 3.0, attribution required) — verify the current licence before using it.
-  Checked by web search 2026-10-09: several projects that redistribute it state "Salamander
-  Grand Piano V3 by Alexander Holm, CC BY 3.0" (commercial use allowed with credit). The
-  original page, https://archive.org/details/SalamanderGrandPianoV3, has not been read
-  directly yet — do that before the D-14 follow-up decision.
-- **Fallback** if no sample set passes the check: a synthesised voice in our own code
-  (oscillators + envelope, velocity → loudness, sustain pedal).
+- **Built:** Salamander Grand Piano V3 by Alexander Holm (Yamaha C5), CC BY 3.0, bundled
+  locally. Original Internet Archive metadata read directly on 2026-10-09:
+  https://archive.org/metadata/SalamanderGrandPianoV3 — `licenseurl` and the description both
+  link CC BY 3.0. The HTML archive page was inaccessible through the browsing tool; the
+  archive's own metadata API supplied the original description and licence.
+- The licence https://creativecommons.org/licenses/by/3.0/ allows commercial redistribution
+  and adaptation with attribution, a licence link and no incompatible extra restrictions on
+  the samples. The asset licence is separate from the permissive-code rule (D-10/D-17).
+- `public/audio/salamander/` contains the 30 MP3 browser samples from Tonejs/audio, pinned
+  to commit `efd8296360f9526e379bfbe5c1698ff54d6a1d34`, about 2 MB total. Copied unchanged;
+  `README`, `NOTICE.txt` and `manifest.json` retain credit, conversion/subset information,
+  source and SHA-256 hashes. The credit and licence/source links also appear in the UI.
+  Source: https://github.com/Tonejs/audio/tree/efd8296360f9526e379bfbe5c1698ff54d6a1d34/salamander
+- The voice transposes the nearest recording at most two semitones across A0–C8. It has
+  one recorded layer, velocity-controlled loudness, sustain and note-off release, not the
+  full 16-layer library's timbre changes, resonance or mechanical noise. No audio library
+  dependency was added; playback uses Web Audio directly. Needs Jason's listening test.
 - Jason's DEP-20 makes its own sound, so the game's piano is heard in Listen and guide modes
   and for the other hand — not for the notes he plays (KEYBOARD.md).
 - The metronome and the accompaniment go through the same engine, on the audio clock.
+  The metronome is built; score-driven accompaniment comes with the piece player.
 
 ## Licensing
 
