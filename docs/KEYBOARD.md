@@ -56,6 +56,11 @@ As built before setup exists: enable sound in the audio monitor, then use its
 keys and bot demos always use the game's sampled voice. Enabling own sound silences any
 MIDI voices already playing. The setting is not yet saved between page loads.
 
+The audio monitor explicitly shows whether MIDI notes are muted. **Play MIDI through
+computer** enables sound and unchecks own-sound in one click; use this when you want the
+game to sound your playing through the PC. Receiving MIDI/velocity alone does not enable
+browser audio.
+
 - **Yes (digital piano, or a keyboard with speakers):** the player hears their own notes from
   the keyboard with no delay. The game does **not** sound the player's notes (they would be
   doubled, slightly late). It still plays the metronome, the accompaniment and bot demos.

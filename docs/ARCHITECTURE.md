@@ -111,6 +111,8 @@ App dispatches all input to the engine before any future runner. MIDI player not
 to muted for the DEP-20's own speakers; the computer keyboard and bot always sound.
 `ui/AudioMonitor.tsx` offers enable/retry, a C-major test chord, metronome, tempo/rate,
 pause/resume, stop-all and own-sound controls alongside the existing monitor/staff spike.
+It explicitly reports MIDI muting; **Play MIDI through computer** starts audio and unmutes
+MIDI together, so the sound setup is a single action.
 Own-sound is session-only for now. Window blur, a suspended context and teardown silence
 voices and stop the transport/metronome. The final play screen and persistent setup are
 still later items.

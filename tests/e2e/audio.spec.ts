@@ -32,8 +32,14 @@ test('audio: transport stays continuous across tempo, rate, wait and resume', ()
 
 test('audio: input sounds key/bot notes, mutes own-sound MIDI, and releases sustain', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Enable sound' }).click()
+  await expect(page.getByTestId('midi-sound-status')).toContainText('MIDI notes are muted')
+  await page.getByRole('button', { name: 'Play MIDI through computer' }).click()
   await expect(page.getByTestId('audio-status')).toHaveText('Piano ready')
+  await expect(page.getByTestId('midi-sound-status')).toHaveText('MIDI notes play through the computer.')
+  // The one-click path starts audio and unmutes MIDI, without another setup action.
+  await page.evaluate(() => window.__piano.send({ type: 'on', note: 60, velocity: 90, src: 'midi', t: performance.now() }))
+  expect(await page.evaluate(() => window.__piano.engine.piano!.activeVoices)).toBe(1)
+  await page.getByLabel('My MIDI keyboard makes its own sound', { exact: false }).check()
   const muted = await page.evaluate(() => {
     const { engine, send } = window.__piano
     send({ type: 'on', note: 60, velocity: 90, src: 'midi', t: performance.now() })

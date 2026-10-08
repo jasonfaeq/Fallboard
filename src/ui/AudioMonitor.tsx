@@ -20,8 +20,17 @@ export default function AudioMonitor({ engine }: { engine: Engine }) {
         engine.status === 'error' ? `Could not load piano: ${engine.error}` :
         ready ? 'Piano ready' : 'Sound suspended — enable sound to resume.'}
     </p>
+    <p data-testid="midi-sound-status">
+      {ownSound ? 'MIDI notes are muted in the game — using the keyboard’s own sound.' :
+        ready ? 'MIDI notes play through the computer.' : 'MIDI notes will play through the computer once sound is enabled.'}
+    </p>
     <div className="audio-controls">
       <button disabled={engine.status === 'loading'} onClick={() => void engine.start()}>Enable sound</button>
+      <button disabled={engine.status === 'loading'} onClick={() => {
+        engine.keyboardOwnSound = false
+        setOwnSound(false)
+        void engine.start()
+      }}>Play MIDI through computer</button>
       <button disabled={!ready} onClick={() => engine.demo()}>Play piano chord</button>
       <button disabled={!ready} onClick={() => {
         if (engine.metronomeOn) { engine.setMetronome(false); engine.transport.pause() }
