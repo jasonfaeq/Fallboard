@@ -25,10 +25,11 @@ export const MAX_VELOCITY = MAX_VALUE
 
 /** Sample filenames use scientific pitch names; keep their MIDI conversion here. */
 export function noteNumber(name: string) {
-  const match = /^([A-G])(s?)(\d)$/.exec(name)
+  const match = /^([A-G])(s|#{1,2}|b{1,2})?([0-8])$/.exec(name)
   if (!match) throw new Error(`Invalid pitch: ${name}`)
   const offsets: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
-  return (Number(match[3]) + 1) * 12 + offsets[match[1]] + (match[2] ? 1 : 0)
+  const acc = match[2] ?? ''
+  return (Number(match[3]) + 1) * 12 + offsets[match[1]] + (acc.startsWith('b') ? -acc.length : acc === 's' ? 1 : acc.length)
 }
 
 const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B']
@@ -169,7 +170,7 @@ export class Input {
     const sounding = new Map<string, number>() // key → the note it started, so an octave shift can't strand it
     const down = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName
-      if (tag === 'INPUT' || tag === 'BUTTON' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
+      if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(tag) || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
       const key = e.key.toLowerCase()
       const t = e.timeStamp || performance.now()
       if (key in KEY_OFFSETS) {

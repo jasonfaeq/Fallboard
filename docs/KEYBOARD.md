@@ -2,7 +2,8 @@
 
 How the game hears the player. **Status (2026-10-09): built** — `src/engine/input.ts` and the
 MIDI monitor (`src/ui/MidiMonitor.tsx`), tested with the computer keyboard and with raw MIDI
-bytes, **not yet with a real keyboard**. The audio monitor now has an own-sound checkbox
+bytes. Jason confirmed MIDI-to-PC sound works and free-play delay feels acceptable on
+2026-10-09; full range, velocity limits, pedal and hot-plug are still unchecked. The audio monitor has an own-sound checkbox
 (session-only, defaults on); the key-range setup and persistent setup are still not built.
 The MIDI facts below are from the MIDI standard; what Jason's keyboard actually
 sends is unknown until he runs the MIDI monitor.
@@ -15,7 +16,7 @@ sends is unknown until he runs the MIDI monitor.
 | Keys / range | 88 keys — expect 21–108; confirm in the MIDI monitor |
 | Own sound (speakers or headphone out) | Yes, it is a digital piano with its own voices. So the game does not sound Jason's notes by default. _Confirm with Jason: he hears it without the PC._ |
 | Sustain pedal | Yes, on/off (no half-pedalling). Polarity unknown — monitor |
-| Connection | USB to the PC — _not yet tried; needs hardware test_ |
+| Connection | MIDI input and PC playback confirmed by Jason, 2026-10-09; hot-plug still needs hardware test |
 
 ## What the game reads
 
@@ -89,7 +90,8 @@ For testing without a MIDI keyboard. Same `NoteEvent`s, fixed velocity.
 
 An in-game screen that lists incoming messages (raw bytes, note name, velocity, timestamp)
 and shows which keys and pedal are down. It is how Jason verifies anything an agent can't.
-As built it is the app's opening screen. It also sums up what it has seen: lowest and highest
+As built it is under **Sound setup and MIDI monitor** below the opening piece player. It
+also sums up what it has seen: lowest and highest
 key, softest and hardest velocity, how "key up" is sent, and whether the pedal is on/off or
 continuous — the answers to the list below.
 
@@ -99,4 +101,5 @@ continuous — the answers to the list below.
 - Lowest and highest key numbers; whether Note Off or Note On-velocity-0 is sent.
 - Velocity range when playing very softly and very hard (some keyboards never reach 127).
 - Sustain pedal: on/off or continuous, and whether it is inverted (some pedals are).
-- With own sound off: is the delay between pressing a key and hearing it playable?
+- With own sound off: free-play delay confirmed acceptable by Jason, 2026-10-09. Still check
+  the timing/feel while playing the actual piece.

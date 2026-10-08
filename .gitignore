@@ -13,3 +13,4 @@ public/scores/
 # Playwright failure artifacts
 test-results/
 playwright-report/
+.qa/

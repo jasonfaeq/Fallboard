@@ -18,8 +18,11 @@ same idea for DJing. That repo is the **read-only reference** for how things are
 
 **State (2026-10-09): Phase 1 started.** Built: MIDI input, the MIDI monitor screen and a
 staff-rendering spike (VexFlow, D-16), audio-clock Transport, metronome and sampled piano
-(D-17). No score model, game logic or content yet, so
-most of `docs/` is still the plan. The job is ROADMAP Phase 1, the piece player (D-13). When you build something, change its doc from "planned" to
+(D-17), the score/text notation and complete unverified Chopin transcription (D-18), and
+the play screen with Listen, section looping and Full/Staff/Page views. MIDI sound and
+free-play delay feel acceptable to Jason (2026-10-09); piece/score confirmation is pending.
+Wait/in-time/guide modes, matching, mission flow and results are still planned. The job is
+ROADMAP Phase 1, the piece player (D-13). When you build something, change its doc from "planned" to
 "as built" so the docs stay true.
 
 Start every task like this (keeps context small — every chat starts from zero):

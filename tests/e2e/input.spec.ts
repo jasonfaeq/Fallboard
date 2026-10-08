@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test'
 
-const key = (note: number) => `.key[data-note="${note}"]`
+const key = (note: number) => `.monitor .key[data-note="${note}"]`
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
+  await page.getByText('Sound setup and MIDI monitor', { exact: true }).click()
   await page.waitForFunction(() => !!window.__piano)
 })
 

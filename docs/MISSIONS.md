@@ -20,6 +20,10 @@ build a part, add an "As built" paragraph under it.
 
 ## Play modes
 
+As built (2026-10-09): the piece screen has Listen for a whole piece/section, with count-in,
+pause, rate and looping. It uses `game/player.ts`; no reusable templates, matching or scoring
+exist yet. Full/Staff/Page are implemented for this player. The modes below remain planned.
+
 | Mode | Transport | Scores | Used for |
 |---|---|---|---|
 | **Wait** | stops at each group until the right keys are down | first-try accuracy, no timing | first contact with a passage |

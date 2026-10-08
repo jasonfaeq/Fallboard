@@ -1,6 +1,11 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { Transport } from '../../src/engine/audio'
 import type { Piano } from '../../src/engine/piano'
+
+async function openMonitor(page: Page) {
+  await page.goto('/')
+  await page.getByText('Sound setup and MIDI monitor', { exact: true }).click()
+}
 
 test('audio: transport stays continuous across tempo, rate, wait and resume', () => {
   let time = 10
@@ -31,9 +36,9 @@ test('audio: transport stays continuous across tempo, rate, wait and resume', ()
 })
 
 test('audio: input sounds key/bot notes, mutes own-sound MIDI, and releases sustain', async ({ page }) => {
-  await page.goto('/')
+  await openMonitor(page)
   await expect(page.getByTestId('midi-sound-status')).toContainText('MIDI notes are muted')
-  await page.getByRole('button', { name: 'Play MIDI through computer' }).click()
+  await page.getByRole('region', { name: 'Audio monitor' }).getByRole('button', { name: 'Play MIDI through computer' }).click()
   await expect(page.getByTestId('audio-status')).toHaveText('Piano ready')
   await expect(page.getByTestId('midi-sound-status')).toHaveText('MIDI notes play through the computer.')
   // The one-click path starts audio and unmutes MIDI, without another setup action.
@@ -66,7 +71,7 @@ test('audio: input sounds key/bot notes, mutes own-sound MIDI, and releases sust
 })
 
 test('audio: rendered samples are audible, velocity-sensitive, and obey pedal/release', async ({ page }) => {
-  await page.goto('/')
+  await openMonitor(page)
   await page.getByRole('button', { name: 'Enable sound' }).click()
   await expect(page.getByTestId('audio-status')).toHaveText('Piano ready')
   const result = await page.evaluate(async () => {
@@ -102,7 +107,7 @@ test('audio: rendered samples are audible, velocity-sensitive, and obey pedal/re
 })
 
 test('audio: metronome uses beat times, pauses cleanly, and resumes without a jump', async ({ page }) => {
-  await page.goto('/')
+  await openMonitor(page)
   await page.getByRole('button', { name: 'Enable sound' }).click()
   await expect(page.getByTestId('audio-status')).toHaveText('Piano ready')
   await page.evaluate(() => {
@@ -146,7 +151,7 @@ test('audio: metronome uses beat times, pauses cleanly, and resumes without a ju
 
 test('audio: a failed sample load is visible and can be retried', async ({ page }) => {
   await page.route('**/audio/salamander/A0.mp3', (route) => route.fulfill({ status: 503, body: 'unavailable' }))
-  await page.goto('/')
+  await openMonitor(page)
   await page.getByRole('button', { name: 'Enable sound' }).click()
   await expect(page.getByTestId('audio-status')).toContainText('Could not load piano:')
   await expect(page.getByRole('button', { name: 'Play piano chord' })).toBeDisabled()

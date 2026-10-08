@@ -1,9 +1,9 @@
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useReducer } from 'react'
 import type { Engine } from '../engine/audio'
 
 export default function AudioMonitor({ engine }: { engine: Engine }) {
   const [, redraw] = useReducer((n: number) => n + 1, 0)
-  const [ownSound, setOwnSound] = useState(engine.keyboardOwnSound)
+  const ownSound = engine.keyboardOwnSound
   useEffect(() => {
     engine.onChange = redraw
     let frame = 0
@@ -28,7 +28,6 @@ export default function AudioMonitor({ engine }: { engine: Engine }) {
       <button disabled={engine.status === 'loading'} onClick={() => void engine.start()}>Enable sound</button>
       <button disabled={engine.status === 'loading'} onClick={() => {
         engine.keyboardOwnSound = false
-        setOwnSound(false)
         void engine.start()
       }}>Play MIDI through computer</button>
       <button disabled={!ready} onClick={() => engine.demo()}>Play piano chord</button>
@@ -54,7 +53,7 @@ export default function AudioMonitor({ engine }: { engine: Engine }) {
       </select></label>
     </div>
     <label className="own-sound"><input type="checkbox" checked={ownSound} onChange={(e) => {
-      engine.keyboardOwnSound = e.target.checked; setOwnSound(e.target.checked)
+      engine.keyboardOwnSound = e.target.checked
     }} /> My MIDI keyboard makes its own sound (mute its notes in the game)</label>
     <p className="hint">Computer keys always use the game's piano. A–K plays C4–C5; Space holds sustain.
       If your keyboard is silent, uncheck the box above.</p>

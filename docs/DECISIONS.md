@@ -116,3 +116,14 @@ Use native Web Audio playback, nearest-sample transposition, velocity gain and s
 *About 2 MB, works locally with no runtime CDN or new dependency. This first voice uses one
 recorded layer; the full 16-layer library and resonance are not implemented. Jason still
 needs to judge its sound/latency on the DEP-20.*
+
+**D-18 · 2026-10-09 · Explicit pitch text notation on a quarter-note clock** — `definePiece`
+reads one string per hand, `|` bars, explicit spelled octave/pitch and duration on each token
+(`F#4:8`, `[C4,E4,G4]:2.`). Whole-chord ties, grace notes and eighth triplets cover the first
+Chopin piece; playback merges ties while retaining separate engraving events. The engine
+uses quarter-note beats even for 2/2, with a negative pickup and explicit shortened final
+bar. The complete transcription comes from Mutopia 921's public-domain Peters-based parts;
+the printed turn is expanded using its note realisation. *Readable diffs and validation of
+every bar, without an importer or new dependency. Steady practice playback omits rubato,
+fermata extensions and expressive pedal/dynamic shaping; Jason confirms the notes in Listen
+before `verified` changes.*

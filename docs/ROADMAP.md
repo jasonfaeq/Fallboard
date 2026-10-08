@@ -32,15 +32,21 @@ One real piece, both hands, from keyboard to results: Chopin's Prelude in E mino
 - [x] 🔀 **Engine**: `Transport` on the audio clock (tempo, `beatAt`, rate, pause/resume),
       metronome clicks, the sampled piano voice after its licence check (D-14/D-17) —
       2026-10-09. Audio monitor controls and local samples; no new dependency.
-      *Needs hardware test: piano quality, sustain and output delay on the DEP-20.*
-- [ ] 🔀 **Score model** + the text notation (two hands, chords, ties, accidentals), and the
-      first piece transcribed by hand (D-15). *Needs Jason: listen and confirm the notes.*
+      MIDI sound and acceptable free-play delay confirmed by Jason, 2026-10-09.
+      *Needs hardware test: sustain and timing/feel while playing the real piece.*
+- [x] 🔀 **Score model** + the text notation (two hands, chords, ties, accidentals), and the
+      complete Chopin transcription — 2026-10-09 (D-15/18). Includes pickup, triplets,
+      grace notes and final chords; piece validator built. *Needs Jason: listen and confirm
+      the notes; `verified` remains false.*
 - [x] **Staff rendering spike** → VexFlow (D-16) — 2026-10-09. Drawn: grand staff, per-note
       colours, note x positions. Not yet: the playhead, scrolling, drawing from the Score.
-- [ ] **Play screen**, built to the agreed mockup: staff, optional falling notes and
-      88-key keyboard (the view toggle), tempo 50–100 %, section loop.
+- [x] **Play screen**, built to the recorded mockup layout: staff, optional falling notes and
+      88-key keyboard, Full/Staff/Page toggle, 50/75/100% speed and section loop — 2026-10-09.
+      Listen with count-in/pause/resume and bar ending is playable. *Needs Jason's visual
+      and listening check; source mockup URL was inaccessible during implementation.*
 - [ ] **Modes**: Listen, Wait, Play in time, Play with guide — as the templates `listen`,
-      `playWait`, `playInTime` (guide is a setting on the last two).
+      `playWait`, `playInTime` (guide is a setting on the last two). Listen playback is built;
+      reusable templates and the other modes remain.
 - [ ] **Mission engine**: snapshot, matcher, steps, scoring, runner, level flow (count-in →
       steps → ending → results), bot runner, validator (MISSIONS.md); results screen.
 - [ ] **Test harness**: the bot plays the piece through the input path and gets ≥ ★★.

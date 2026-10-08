@@ -40,9 +40,13 @@ export class Transport {
     else this.anchor()
     this.stopped = true
   }
-  resume() {
+  resume(at?: number) {
     if (!this.stopped) return
     this.anchor()
+    if (at !== undefined) {
+      if (!Number.isFinite(at) || at < this.anchorTime) throw new Error('Resume time must be on or after the audio clock')
+      this.anchorTime = at
+    }
     this.stopped = false
   }
   private anchor() {
@@ -73,6 +77,7 @@ export class Engine {
   set keyboardOwnSound(value: boolean) {
     this.ownSound = value
     if (value) this.piano?.allNotesOff('midi')
+    this.onChange()
   }
   get metronomeOn() { return this.metronome }
   get latency() { return (this.context?.baseLatency ?? 0) + (this.context?.outputLatency ?? 0) }

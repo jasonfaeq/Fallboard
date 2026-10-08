@@ -7,6 +7,10 @@ with a **Recital**. This is the content plan; mission mechanics live in MISSIONS
 mission; venues 3–8 are outlines, written out when the venue before them is playable. The
 piece choices wait on Jason's goal pieces (VISION.md › Open questions).
 
+Phase 1 status (2026-10-09): Chopin Op. 28 No. 4 is transcribed and available in the Listen
+piece player with six practice sections; notes await Jason's confirmation. This is not a
+career mission yet. The venue missions below remain unbuilt.
+
 ## Legend
 
 **Types**

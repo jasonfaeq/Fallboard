@@ -1,9 +1,10 @@
 # Architecture
 
 **Status (2026-10-09): mostly planned.** Built so far: `engine/input.ts` (every input goes
-through `Input.send`; `window.__piano = { input, engine, send }`), `ui/Keyboard.tsx`,
+through `Input.send`; `window.__piano = { input, engine, player, send }`), `ui/Keyboard.tsx`,
 `ui/MidiMonitor.tsx`, the VexFlow staff spike `ui/StaffSpike.tsx` (D-16), and the audio
-engine/monitor described below (D-17). The rest is the
+engine/monitor (D-17), score model/piece (D-18), and the Listen play screen described below.
+The rest is the
 target shape, taken from DJ Trainer's proven structure and adapted to notes. Keep this file true: when you build a part,
 describe how it actually works and drop the word "planned".
 
@@ -61,7 +62,7 @@ around the steps: `countIn` → `steps` → `ending` → `done`.
 |---|---|
 | `engine/audio.ts` | built: `Engine` (AudioContext with `latencyHint: 'interactive'`, limiter, metronome) and `Transport` (tempo, rate, `beatAt`, `timeAtBeat`, pause/resume) |
 | `engine/piano.ts` | built: sampled Salamander voice, velocity gain, per-source sustain and note release (D-17) |
-| `engine/score.ts` | `Score` (notes with pitch, start, length, hand, finger; bars, time and key signature, tempo, sections) and the small text notation |
+| `engine/score.ts` | built: typed piece/text notation, spelled events for engraving, tied/ornament sound notes, bars and sections (D-18) |
 | `engine/input.ts` | Web MIDI (hot-plug), `NoteEvent`s, sustain pedal, key-range setup, MIDI monitor log, computer-keyboard fallback. All MIDI numbers live here |
 | `game/core.ts` | shared types: `Hud`, `Run`, `Assist`, `gradeMs` |
 | `game/snapshot.ts` | the read-only state snapshot and its builder |
@@ -77,8 +78,8 @@ around the steps: `countIn` → `steps` → `ending` → `done`.
 | `content/templates/*.ts` | step templates |
 | `content/pieces/*.ts` | one piece per file |
 | `content/venues/*/*.ts` | one mission per file; `content/index.ts` registers them all (glob) |
-| `ui/Staff.tsx` | the grand staff: notes, cursor, hit/miss colours (renderer: D-08, open) |
-| `ui/Highway.tsx` | falling notes (canvas), aligned with the on-screen keyboard |
+| `ui/Staff.tsx` | built: Score → VexFlow grand staff, rhythm/accidentals/ties/ornaments, note positions, scrolling or still page; hit/miss feedback still planned |
+| `ui/Highway.tsx` | built: SVG falling notes aligned with the 88-key keyboard |
 | `ui/Keyboard.tsx` | on-screen keyboard: held keys, target keys at Full assist |
 | `ui/Results.tsx`, `ui/CareerScreen.tsx` | results tally, career map (patterns from DJ Trainer) |
 | `App.tsx` | screens, game loop (`requestAnimationFrame`) |
@@ -91,7 +92,8 @@ around the steps: `countIn` → `steps` → `ending` → `done`.
 master gain and a dynamics compressor configured as a limiter. `Transport` reads only its
 audio-clock callback: tempo/rate changes re-anchor without jumping; `seek` accepts negative
 count-in beats; `pause(beat)` pins an exact wait beat. `timeAtBeat` returns null while paused.
-Tempo must be positive and practice rate is 0.5–1. There is no score scheduler yet.
+Tempo must be positive and practice rate is 0.5–1. `resume(at)` can anchor a future start
+on the audio clock so the first count-in click can be scheduled ahead.
 
 The 4/4 metronome schedules clicks 100 ms ahead, waking every 25 ms. A transport revision
 cancels queued clicks and computes the next integer beat again; late wake-ups skip old
@@ -114,8 +116,34 @@ pause/resume, stop-all and own-sound controls alongside the existing monitor/sta
 It explicitly reports MIDI muting; **Play MIDI through computer** starts audio and unmutes
 MIDI together, so the sound setup is a single action.
 Own-sound is session-only for now. Window blur, a suspended context and teardown silence
-voices and stop the transport/metronome. The final play screen and persistent setup are
-still later items.
+voices and stop the transport/metronome. Jason confirmed MIDI sound and acceptable free-play
+delay on 2026-10-09; the real piece and pedal still need his check.
+
+## Score and play screen (as built, 2026-10-09)
+
+`engine/score.ts` reads the explicit text notation in MUSIC.md. Each hand/bar is validated;
+engraving events retain spelling, dots, tuplets, rests and ties. `soundNotes` merges tied
+segments into a single attack and realises grace/turn notes. `content/pieces/chopin-op28-4.ts`
+has the complete 25-bar piece plus pickup, source/licence, sections and practice plan;
+`verified` is false. `npm run validate` transpiles these data modules with the already
+installed TypeScript into an OS temporary directory and imports them for structural checks.
+Mission validation is still planned.
+
+`game/player.ts` is the Listen player, not the mission runner. A 25 ms wake-up schedules
+notes 100 ms ahead using `Transport.timeAtBeat` and the sampled voice. Flow is a four-quarter
+count-in → selected bars → 500 ms ring-out → finished, or another count-in when looping.
+Pause silences demo voices; resume/rate changes cancel queued voices, re-anchor and restore
+notes still in progress (with a fresh sampled attack). Timing comes only from the audio
+clock. The UI derives its cursor from that clock minus reported output latency. Listen
+uses accompaniment scheduling directly; the future bot still must use the input path.
+
+`ui/PlayScreen.tsx` is the opening screen: one control strip, grand staff above falling notes
+and 88 keys. Full shows hand colours, falling notes, sounding/held keys and note names;
+Staff shows only the moving staff; Page is a still complete score without a cursor or hand
+colours. VexFlow is redrawn only for score/page layout changes; animation moves its SVG.
+Sections (including the pickup with section 1), loop, 50/75/100% speed, metronome and the
+one-click MIDI sound button work. The sound/MIDI monitor remains in a collapsible diagnostic
+panel. Wait, timed/guide modes, matcher, bots, scoring/results and career remain later items.
 
 ## Persistence (localStorage, per browser)
 

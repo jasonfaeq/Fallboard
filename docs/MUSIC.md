@@ -1,18 +1,25 @@
 # Music — pieces, scores, sound, licensing
 
-**Status (2026-10-09): score/content planned; sampled piano built (D-17).** Unlike DJ Trainer
+**Status (2026-10-09): score format, Chopin transcription and sampled piano built (D-17/18).** Unlike DJ Trainer
 there is no song analysis: a piece is note data, played through the piano's bundled samples.
 
 ## The Score model (D-08)
 
 Our own `Score` type (`src/engine/score.ts`) is the only thing the game, the matcher, the
-bots and the renderers read. Planned content:
+bots and the renderers read. As built:
 
-- **Notes**: pitch (MIDI number), start and length in beats, hand (`L`/`R`), optional
-  suggested finger (1–5), optional dynamic.
+- **Sound notes**: spelled pitch and MIDI number, start/length in beats, hand (`L`/`R`) and
+  links to engraving events. Suggested fingering and authored dynamics remain later work.
 - **Bars**: time signature, key signature, tempo (BPM).
 - **Sections**: named bar ranges of 2–8 bars (the units a piece is practised in).
-- **Later**: pedal marks, ties and slurs, articulation, chord symbols, repeats.
+- Ties retain separate engraved events but combine into one audible note; grace notes and
+  eighth-note triplets are represented. Later: pedal marks, slurs, articulation, repeats.
+
+`definePiece` validates each hand/bar, pitch range, complete ties/triplets and section bounds.
+`Score.events` contains spelled chords/rests for engraving; `Score.soundNotes` flattens pitches,
+merges ties and realises ornaments for playback. Bars have quarter-note start/length and a
+number; pickup is bar 0 at negative beats. `sectionBounds` includes the pickup with bar 1.
+Metadata, sections and a short practice plan live in each typed piece file. No importer yet.
 
 A piece file (`src/content/pieces/<id>.ts`) adds metadata:
 
@@ -21,32 +28,45 @@ export default definePiece({
   id: 'ode-to-joy', title: 'Ode to Joy', composer: 'Ludwig van Beethoven',
   source: 'Symphony No. 9, 4th movement theme (1824); our arrangement',
   licence: 'public-domain composition, own arrangement',
-  verified: false,            // true once Jason has played it and the notes are right
-  tempo: 80, key: 'C', time: '4/4',
-  sections: [{ name: 'A', bars: [1, 4] }, { name: 'A2', bars: [5, 8] }],
-  right: '…',                 // the text notation, one string per hand
-  left: null,
+  verified: false,            // true once Jason has heard and confirmed the notes
+  tempo: 80, key: 'C', time: [4, 4],
+  sections: [{ name: 'A', bars: [1, 2] }],
+  right: 'E4:4 E4:4 F4:4 G4:4 | G4:4 F4:4 E4:4 D4:4',
+  left: 'r:1 | r:1',
+  practice: ['Listen, then play the right hand slowly.'],
 })
 ```
 
 ## Text notation
 
-A tiny notation of our own, so drills and beginner pieces can be typed by hand and reviewed
-in a diff. **Designed in Phase 1**; keep it to what Venue 1–2 need (pitches, lengths, rests,
-bar lines, chords) and extend it only when a mission needs more. Illustrative only:
+A tiny notation of our own, typed by hand and reviewed in a diff (D-18). Each hand is a
+string with bars separated by `|`. Every pitch has an explicit octave/accidental and every
+token an explicit duration denominator; the key signature changes engraving, not parsing.
 
 ```
-E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | E4. D4/8 D4:h
+C4:2 [E4,G4]:4 F#4:4~ | F#4:2. r:4
 ```
 
-Longer pieces are easier to engrave in a notation program and export as MusicXML; the
-importer for that is ROADMAP Phase 6. Until then, pieces are typed.
+`:4` = quarter, `:8.` = dotted eighth, `:8t` = eighth-note triplet (three together), `r:2`
+= half rest, `~` ties the whole chord to the next identical chord, `^B4` is a grace note
+attached to the following token. Double sharps/flats are supported. Grace playback borrows
+1/8 quarter beat from its principal note. Quarter beats are the clock even in 2/2.
+
+The built Chopin file has a one-beat pickup, bars 1–24 of four quarter beats and a three-beat
+final bar; `verified: false` awaits Jason's Listen confirmation. Pitches/durations were read
+from Mutopia's public-domain engraved parts. Bar 16's turn uses its explicit MIDI note
+realisation. The MIDI's rubato, elongated fermatas and pedal/dynamic performance are not
+copied; playback is steady practice tempo. Closing RH chords stay on the treble staff.
+Source ZIP SHA-256: `1f35c19d3bfdfeeac0a9c1a283aeb3a3cc8f98acb3f49593c4b25fcf6b161497`.
 
 ## Staff rendering (D-16: VexFlow)
 
-The staff is a drawing layer fed from the Score. **Chosen: VexFlow 5** — the spike is
-`src/ui/StaffSpike.tsx` (hard-coded bars; the real `Staff.tsx` fed from the Score is still to
-build). The candidates below are kept for the record. What the game needs from it:
+The staff is a drawing layer fed from the Score. **Built: `src/ui/Staff.tsx` with VexFlow 5.**
+It draws spelled chords/rests, accidentals, beams, dots, ties and triplets on a grand staff,
+plus grace-note groups. Full/Staff scroll beneath a fixed playhead; Page lays out the whole
+piece in still systems. `StaffSpike.tsx` is retained as an unused spike. Cross-staff closing
+RH notes are shown together in the treble staff for now. The candidates below are kept for
+the record. What the game needs from it:
 
 - a grand staff (treble + bass), key and time signatures, beams, ties, rests, accidentals;
 - the screen position of every note, for the cursor and for hit/miss colours;
@@ -75,7 +95,8 @@ renders ABC text), or our own drawing limited to beginner scores. **Not allowed:
 - The voice transposes the nearest recording at most two semitones across A0–C8. It has
   one recorded layer, velocity-controlled loudness, sustain and note-off release, not the
   full 16-layer library's timbre changes, resonance or mechanical noise. No audio library
-  dependency was added; playback uses Web Audio directly. Needs Jason's listening test.
+  dependency was added; playback uses Web Audio directly. Jason confirmed MIDI sound and
+  acceptable free-play delay on 2026-10-09. Piece listening/confirmation is still pending.
 - Jason's DEP-20 makes its own sound, so the game's piano is heard in Listen and guide modes
   and for the other hand — not for the notes he plays (KEYBOARD.md).
 - The metronome and the accompaniment go through the same engine, on the audio clock.
@@ -107,10 +128,11 @@ order: Chopin, Prelude in E minor Op. 28 No. 4 · Bach, Prelude in C minor (BWV 
 ask) · Beethoven, Sonata Op. 27 No. 2 "Moonlight", 1st movement. These are the original
 notes, not arrangements; name the edition used in `source`.
 
-Source found for the Chopin (web search, 2026-10-09): Mutopia Project piece 921, "Prelude:
+Source for the Chopin (checked directly 2026-10-09): Mutopia Project piece 921, "Prelude:
 Op. 28, No. 4 (from Peters source)", listed as public domain, with MIDI and LilyPond files —
-https://www.ibiblio.org/mutopia/cgibin/piece-info.cgi?id=921. Open the page and confirm the
-licence line before transcribing from it. (Its LilyPond file is a public-domain score, i.e.
+https://www.ibiblio.org/mutopia/cgibin/piece-info.cgi?id=921. The page and
+score both declare public domain; the complete piece is now `content/pieces/chopin-op28-4.ts`.
+(Its LilyPond file is a public-domain score, i.e.
 data; that is not the same as copying LilyPond's GPL program code.)
 
 ## Starter repertoire
