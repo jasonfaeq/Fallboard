@@ -1,7 +1,9 @@
 # Architecture
 
-**Status (2026-10-04): planned — no code exists.** This is the target shape, taken from DJ
-Trainer's proven structure and adapted to notes. Keep this file true: when you build a part,
+**Status (2026-10-09): mostly planned.** Built so far: `engine/input.ts` (every input goes
+through `Input.send`; `window.__piano = { input, send }`), `ui/Keyboard.tsx`,
+`ui/MidiMonitor.tsx`, and the VexFlow staff spike `ui/StaffSpike.tsx` (D-16). The rest is the
+target shape, taken from DJ Trainer's proven structure and adapted to notes. Keep this file true: when you build a part,
 describe how it actually works and drop the word "planned".
 
 ## Overview

@@ -25,15 +25,15 @@ note anything that needs a hardware test.
 
 One real piece, both hands, from keyboard to results: Chopin's Prelude in E minor.
 
-- [ ] 🔀 **Input**: Web MIDI note on/off, velocity and sustain pedal as `NoteEvent`s;
-      computer-keyboard fallback; MIDI monitor screen (KEYBOARD.md).
-      *Needs hardware test: the DEP-20 in the monitor.*
+- [x] 🔀 **Input**: Web MIDI note on/off, velocity and sustain pedal as `NoteEvent`s;
+      computer-keyboard fallback; MIDI monitor screen (KEYBOARD.md) — 2026-10-09.
+      *Needs hardware test: the DEP-20 in the monitor (KEYBOARD.md › Needs hardware test).*
 - [ ] 🔀 **Engine**: `Transport` on the audio clock (tempo, `beatAt`, rate, pause/resume),
       metronome clicks, the sampled piano voice after its licence check (D-14).
 - [ ] 🔀 **Score model** + the text notation (two hands, chords, ties, accidentals), and the
       first piece transcribed by hand (D-15). *Needs Jason: listen and confirm the notes.*
-- [ ] **Staff rendering spike** → a new decision (D-08): a grand staff with a playhead and
-      per-note hit/miss colours.
+- [x] **Staff rendering spike** → VexFlow (D-16) — 2026-10-09. Drawn: grand staff, per-note
+      colours, note x positions. Not yet: the playhead, scrolling, drawing from the Score.
 - [ ] **Play screen**, built to the agreed mockup: staff, optional falling notes and
       88-key keyboard (the view toggle), tempo 50–100 %, section loop.
 - [ ] **Modes**: Listen, Wait, Play in time, Play with guide — as the templates `listen`,

@@ -42,10 +42,11 @@ E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | E4. D4/8 D4:h
 Longer pieces are easier to engrave in a notation program and export as MusicXML; the
 importer for that is ROADMAP Phase 6. Until then, pieces are typed.
 
-## Staff rendering (D-08, open)
+## Staff rendering (D-16: VexFlow)
 
-The staff is a drawing layer fed from the Score. Phase 1 runs a spike and records the choice
-as a new decision, after asking Jason (dependency rule). What the game needs from it:
+The staff is a drawing layer fed from the Score. **Chosen: VexFlow 5** — the spike is
+`src/ui/StaffSpike.tsx` (hard-coded bars; the real `Staff.tsx` fed from the Score is still to
+build). The candidates below are kept for the record. What the game needs from it:
 
 - a grand staff (treble + bass), key and time signatures, beams, ties, rests, accidentals;
 - the screen position of every note, for the cursor and for hit/miss colours;

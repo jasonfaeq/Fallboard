@@ -16,9 +16,9 @@ It is the sibling of **DJ Trainer** (`C:\Users\Jason\Main Folders\Projects\DJ Tr
 same idea for DJing. That repo is the **read-only reference** for how things are built
 (mission engine, bots, level flow, tests) — see `docs/PORTING.md`. Never edit it from here.
 
-**State (2026-10-09): scaffold only.** An empty app builds and one test opens it; nothing
-in `src/engine`, `src/game` or `src/content` exists yet, so `docs/` is still the plan.
-The next job is ROADMAP Phase 1, the piece player (D-13). When you build something, change its doc from "planned" to
+**State (2026-10-09): Phase 1 started.** Built: MIDI input, the MIDI monitor screen and a
+staff-rendering spike (VexFlow, D-16). No audio, score model, game logic or content yet, so
+most of `docs/` is still the plan. The job is ROADMAP Phase 1, the piece player (D-13). When you build something, change its doc from "planned" to
 "as built" so the docs stay true.
 
 Start every task like this (keeps context small — every chat starts from zero):
@@ -95,8 +95,8 @@ Jason launches the game with `start.bat` (installs deps, runs `npm run dev -- --
 **Dependencies & licences**
 - Only permissive licences: MIT, BSD, ISC, Apache-2.0, zlib. **No GPL/AGPL/LGPL code** — that
   rules out copying from MuseScore, PianoBooster, LilyPond or Verovio.
-- Ask Jason before adding any dependency; prefer a few lines of our own code. The one known
-  candidate is a staff-notation renderer (D-08) — still ask.
+- Ask Jason before adding any dependency; prefer a few lines of our own code. The one
+  approved so far is VexFlow, the staff renderer (D-16).
 
 **Music**
 - Shipped pieces are **public-domain compositions in our own arrangements**, or original.

@@ -94,3 +94,14 @@ personal folder. The automatic MusicXML/MIDI importer stays a later phase. *No i
 needed to add a few pieces, and it is the thing Jason asked for first.* (Moves part of
 ROADMAP Phase 6 forward; the first pieces need more of the text notation than Venue 1 would
 have — chords, ties, triplets, accidentals, two hands.)
+
+**D-16 · 2026-10-09 · The staff is drawn with VexFlow** — VexFlow 5 (MIT), imported from
+`vexflow/bravura` so the music font is bundled and nothing is fetched at run time. Jason
+approved the dependency. The spike (`src/ui/StaffSpike.tsx`) drew four two-hand bars of the
+Chopin prelude in under 250 ms, read each note's x position (`getAbsoluteX`) and coloured
+single notes (`setStyle`). We lay out the bars and decide the accidentals ourselves:
+VexFlow's `Accidental.applyAccidentals` repeated accidentals when given two voices. Every
+note, beam and ledger line needs its colour set, or it is drawn black. The single-file build
+grew to about 880 KB. *It gives real engraving (beams, ledger lines, accidentals, clefs) for
+a few lines of our code; writing that for the Moonlight's triplets would take far longer.*
+(Closes the open question in D-08.)

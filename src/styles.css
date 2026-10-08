@@ -18,7 +18,42 @@ body {
   background: var(--stage);
   color: var(--ink);
   font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px;
 }
 
-.shell { padding: 48px 24px; }
-.shell p { color: var(--dim); }
+.shell { padding: 24px; max-width: 1100px; margin: 0 auto; }
+.shell h1 { margin: 0 0 16px; font-size: 22px; }
+.shell h2 { margin: 0; font-size: 15px; }
+
+button {
+  font: inherit;
+  color: var(--ink);
+  background: var(--stage-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+/* On-screen keyboard */
+.keyboard { display: block; width: 100%; }
+.key.white { fill: var(--ink); }
+.key.black { fill: var(--stage); stroke: var(--stage); }
+.key.held { fill: var(--right); }
+
+/* Staff */
+.staff { overflow-x: auto; background: var(--stage-2); border: 1px solid var(--line); border-radius: 6px; }
+.spike .hint { color: var(--dim); margin: 8px 0 24px; }
+
+/* MIDI monitor */
+.monitor .status, .monitor .hint { color: var(--dim); }
+.monitor .pedal { color: var(--dim); margin: 8px 0 20px; }
+.monitor .pedal.down { color: var(--right); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 24px; margin: 0 0 24px; }
+.facts dt { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+.facts dd { margin: 2px 0 0; font-variant-numeric: tabular-nums; }
+.log-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.log { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.log td { padding: 4px 12px 4px 0; border-bottom: 1px solid var(--stage-2); }
+.log .bytes { font-family: Consolas, monospace; color: var(--dim); width: 9ch; }
+.log .time { color: var(--dim); text-align: right; padding-right: 0; }

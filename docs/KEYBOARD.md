@@ -1,8 +1,10 @@
 # Keyboard (MIDI input)
 
-How the game hears the player. **Status (2026-10-09): planned.** The MIDI facts below are
-from the MIDI standard; what Jason's keyboard actually sends is unknown until he runs the
-MIDI monitor.
+How the game hears the player. **Status (2026-10-09): built** — `src/engine/input.ts` and the
+MIDI monitor (`src/ui/MidiMonitor.tsx`), tested with the computer keyboard and with raw MIDI
+bytes, **not yet with a real keyboard**. Not built: the key-range setup step and the own-sound
+setting. The MIDI facts below are from the MIDI standard; what Jason's keyboard actually
+sends is unknown until he runs the MIDI monitor.
 
 ## Jason's keyboard
 
@@ -76,6 +78,9 @@ For testing without a MIDI keyboard. Same `NoteEvent`s, fixed velocity.
 
 An in-game screen that lists incoming messages (raw bytes, note name, velocity, timestamp)
 and shows which keys and pedal are down. It is how Jason verifies anything an agent can't.
+As built it is the app's opening screen. It also sums up what it has seen: lowest and highest
+key, softest and hardest velocity, how "key up" is sent, and whether the pedal is on/off or
+continuous — the answers to the list below.
 
 ## Needs hardware test (Jason)
 
