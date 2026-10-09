@@ -15,6 +15,7 @@ export class PiecePlayer {
   private cursor = 0
   private revision = -1
   private endingAt = 0
+  private request = 0
 
   constructor(readonly engine: Engine, readonly score: Score) {
     this.range = [1, score.bars.at(-1)!.number]
@@ -32,12 +33,14 @@ export class PiecePlayer {
 
   async listen() {
     this.error = ''
+    this.stop()
+    const request = this.request
     await this.engine.start()
+    if (request !== this.request) return
     if (this.engine.status !== 'ready' || this.engine.context?.state !== 'running') {
       this.error = this.engine.error || 'Enable sound to start listening.'
       return
     }
-    this.stop()
     this.cycles = 0
     this.engine.transport.setTempo(this.score.tempo)
     this.begin()
@@ -129,6 +132,7 @@ export class PiecePlayer {
     }
   }
   stop() {
+    this.request++
     if (this.timer) clearInterval(this.timer)
     this.timer = null
     this.engine.setMetronome(false)

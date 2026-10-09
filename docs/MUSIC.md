@@ -1,6 +1,6 @@
 # Music — pieces, scores, sound, licensing
 
-**Status (2026-10-09): score format, Chopin transcription and sampled piano built (D-17/18).** Unlike DJ Trainer
+**Status (2026-10-09): score format, Chopin/Bach transcriptions and sampled piano built (D-17–19).** Unlike DJ Trainer
 there is no song analysis: a piece is note data, played through the piano's bundled samples.
 
 ## The Score model (D-08)
@@ -15,7 +15,7 @@ bots and the renderers read. As built:
 - Ties retain separate engraved events but combine into one audible note; grace notes and
   eighth-note triplets are represented. Later: pedal marks, slurs, articulation, repeats.
 
-`definePiece` validates each hand/bar, pitch range, complete ties/triplets and section bounds.
+`definePiece` validates each hand/voice/bar, pitch range, complete ties/triplets and section bounds.
 `Score.events` contains spelled chords/rests for engraving; `Score.soundNotes` flattens pitches,
 merges ties and realises ornaments for playback. Bars have quarter-note start/length and a
 number; pickup is bar 0 at negative beats. `sectionBounds` includes the pickup with bar 1.
@@ -39,9 +39,11 @@ export default definePiece({
 
 ## Text notation
 
-A tiny notation of our own, typed by hand and reviewed in a diff (D-18). Each hand is a
-string with bars separated by `|`. Every pitch has an explicit octave/accidental and every
-token an explicit duration denominator; the key signature changes engraving, not parsing.
+A tiny notation of our own, typed by hand and reviewed in a diff (D-18/19). Each hand is a
+string with bars separated by `|`, or an array of strings for simultaneous voices. Each
+voice fills every bar independently; ties remain within that voice. Every pitch has an
+explicit octave/accidental and every token an explicit duration denominator; the key
+signature changes engraving, not parsing.
 
 ```
 C4:2 [E4,G4]:4 F#4:4~ | F#4:2. r:4
@@ -59,12 +61,25 @@ realisation. The MIDI's rubato, elongated fermatas and pedal/dynamic performance
 copied; playback is steady practice tempo. Closing RH chords stay on the treble staff.
 Source ZIP SHA-256: `1f35c19d3bfdfeeac0a9c1a283aeb3a3cc8f98acb3f49593c4b25fcf6b161497`.
 
+`bach-bwv846.ts` contains Bach's complete Prelude No. 1 in C major, BWV 846: 35 bars,
+4/4, 60 BPM practice tempo, nine sections. Two independent left-hand voices preserve the
+half-note bass and the inner note entering one sixteenth later, held through the half-bar.
+Bars 33–34 hold both bass voices to the bar ending. Bar 33's right hand stays on the treble
+staff instead of changing clef. The closing arpeggio/fermata is played as a simultaneous
+chord for its written four beats; expressive pedal, dynamics and fermata extension remain
+later work. There is no later Schwencke insertion. `verified: false` awaits Jason's Listen
+confirmation. Source: Mutopia-2011/09/12-5, maintained by Tobias Erbsland; original edition
+unknown, explicitly declared public domain by its typesetter:
+https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=5.
+Source LilyPond data SHA-256: `afa237b10637ca7839b4c9e98b64ba89c781e2cfc1b980679b2632a31951aacd`.
+
 ## Staff rendering (D-16: VexFlow)
 
 The staff is a drawing layer fed from the Score. **Built: `src/ui/Staff.tsx` with VexFlow 5.**
 It draws spelled chords/rests, accidentals, beams, dots, ties and triplets on a grand staff,
 plus grace-note groups. Full/Staff scroll beneath a fixed playhead; Page lays out the whole
-piece in still systems. `StaffSpike.tsx` is retained as an unused spike. Cross-staff closing
+piece in still systems. Simultaneous voices on one staff have separate stem directions.
+`StaffSpike.tsx` is retained as an unused spike. Cross-staff closing
 RH notes are shown together in the treble staff for now. The candidates below are kept for
 the record. What the game needs from it:
 
@@ -122,6 +137,10 @@ Rules:
 - Pop songs need a publisher licence. That is a Phase 8 business question, not a build task.
 
 ## Jason's first pieces (D-15)
+
+Jason additionally requested Bach's Prelude No. 1 in C major, BWV 846 on 2026-10-09.
+It is built and selectable alongside Chopin in the Listen player. The C minor choice below
+remains pending; this addition does not remove it.
 
 Transcribed by hand from sheet music Jason provides or from a public-domain edition, in this
 order: Chopin, Prelude in E minor Op. 28 No. 4 · Bach, Prelude in C minor (BWV 999 or 847 —

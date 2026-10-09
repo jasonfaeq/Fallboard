@@ -70,6 +70,8 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 /* The piece player: the staff stays above the optional falling-note assist. */
 .piece-player { margin-bottom: 32px; }
+.piece-picker { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.piece-picker select { min-width: 0; max-width: 100%; background: var(--stage-2); color: var(--ink); padding: 7px; font: inherit; border: 1px solid var(--line); border-radius: 4px; }
 .piece-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: center; }
 .piece-heading h2 { font-size: 21px; }
 .piece-heading p { color: var(--dim); margin: 6px 0 16px; }

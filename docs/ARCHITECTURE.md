@@ -121,11 +121,13 @@ delay on 2026-10-09; the real piece and pedal still need his check.
 
 ## Score and play screen (as built, 2026-10-09)
 
-`engine/score.ts` reads the explicit text notation in MUSIC.md. Each hand/bar is validated;
+`engine/score.ts` reads the explicit text notation in MUSIC.md. Each hand/voice/bar is validated;
 engraving events retain spelling, dots, tuplets, rests and ties. `soundNotes` merges tied
 segments into a single attack and realises grace/turn notes. `content/pieces/chopin-op28-4.ts`
 has the complete 25-bar piece plus pickup, source/licence, sections and practice plan;
-`verified` is false. `npm run validate` transpiles these data modules with the already
+`verified` is false. `content/pieces/bach-bwv846.ts` adds the complete 35-bar C-major prelude,
+with two simultaneous left-hand voices (D-19); each voice has its own ties and stem direction.
+`npm run validate` transpiles these data modules with the already
 installed TypeScript into an OS temporary directory and imports them for structural checks.
 Mission validation is still planned.
 
@@ -136,6 +138,11 @@ Pause silences demo voices; resume/rate changes cancel queued voices, re-anchor 
 notes still in progress (with a fresh sampled attack). Timing comes only from the audio
 clock. The UI derives its cursor from that clock minus reported output latency. Listen
 uses accompaniment scheduling directly; the future bot still must use the input path.
+
+App's Piece selector switches between Chopin and Bach. It stops the old Listen player and
+creates the selected player on the existing engine, resets section/view controls and updates
+the debug handle. Stop also cancels a Listen request waiting for sample loading, preventing
+an old piece from starting after switching. Input/audio lifetime is independent of selection.
 
 `ui/PlayScreen.tsx` is the opening screen: one control strip, grand staff above falling notes
 and 88 keys. Full shows hand colours, falling notes, sounding/held keys and note names;

@@ -18,7 +18,8 @@ same idea for DJing. That repo is the **read-only reference** for how things are
 
 **State (2026-10-09): Phase 1 started.** Built: MIDI input, the MIDI monitor screen and a
 staff-rendering spike (VexFlow, D-16), audio-clock Transport, metronome and sampled piano
-(D-17), the score/text notation and complete unverified Chopin transcription (D-18), and
+(D-17), the score/text notation and complete unverified Chopin/Bach BWV 846 transcriptions
+(D-18/19), a Piece selector with independent held bass voices for Bach, and
 the play screen with Listen, section looping and Full/Staff/Page views. MIDI sound and
 free-play delay feel acceptable to Jason (2026-10-09); piece/score confirmation is pending.
 Wait/in-time/guide modes, matching, mission flow and results are still planned. The job is

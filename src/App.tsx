@@ -6,7 +6,10 @@ import { Engine } from './engine/audio'
 import AudioMonitor from './ui/AudioMonitor'
 import { PiecePlayer } from './game/player'
 import chopin from './content/pieces/chopin-op28-4'
+import bach from './content/pieces/bach-bwv846'
 import PlayScreen from './ui/PlayScreen'
+
+const pieces = [chopin, bach]
 
 declare global {
   interface Window {
@@ -29,25 +32,34 @@ export default function App() {
 
   useEffect(() => {
     input.onChange = redraw
-    window.__piano = { input, engine, player, send: (e) => input.send(e) }
     const unlisten = input.on((e) => engine.onEvent(e))
     void input.initMidi()
     const detach = input.attachKeyboard(window)
-    const silence = () => { player.pause(); engine.panic() }
+    const silence = () => { playerRef.current!.pause(); engine.panic() }
     window.addEventListener('blur', silence)
     return () => {
       detach()
       unlisten()
       window.removeEventListener('blur', silence)
-      player.stop()
+      playerRef.current!.stop()
       engine.dispose()
     }
+  }, [input, engine])
+
+  useEffect(() => {
+    window.__piano = { input, engine, player, send: (e) => input.send(e) }
   }, [input, engine, player])
 
   return (
     <main className="shell">
       <h1>Piano Trainer</h1>
-      <PlayScreen player={player} input={input} />
+      <label className="piece-picker">Piece <select aria-label="Piece" value={player.score.id} onChange={(e) => {
+        const score = pieces.find((p) => p.id === e.target.value)!
+        player.stop()
+        playerRef.current = new PiecePlayer(engine, score)
+        redraw()
+      }}>{pieces.map((p) => <option key={p.id} value={p.id}>{p.composer} · {p.title}</option>)}</select></label>
+      <PlayScreen key={player.score.id} player={player} input={input} />
       <details className="diagnostics"><summary>Sound setup and MIDI monitor</summary>
         <AudioMonitor engine={engine} />
         <MidiMonitor input={input} />

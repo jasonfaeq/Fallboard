@@ -127,3 +127,11 @@ the printed turn is expanded using its note realisation. *Readable diffs and val
 every bar, without an importer or new dependency. Steady practice playback omits rubato,
 fermata extensions and expressive pedal/dynamic shaping; Jason confirms the notes in Listen
 before `verified` changes.*
+
+**D-19 · 2026-10-09 · Independent score voices for Bach BWV 846** — Jason requested
+Prelude No. 1 in C major as an additional piece. A hand may now contain an array of notation
+strings, each a simultaneous voice with independently validated bar lengths and ties.
+VexFlow aligns those voices on the same staff, with opposing stems. *Bach's held bass and
+delayed inner note overlap; shortening either into a sequential stream would change the
+music. No importer or dependency is needed. The 35-bar public-domain Mutopia-5 source is
+transcribed in explicit pitches and remains unverified until Jason confirms it in Listen.*

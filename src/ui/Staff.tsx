@@ -22,7 +22,8 @@ export default function Staff({ score, beat, assist }: { score: Score; beat: num
       const div = host.current
       div.replaceChildren()
       const widths = score.bars.map((bar) => Math.max(bar.number === 0 ? 220 : 350,
-        130 + Math.max(...(['R', 'L'] as const).map((h) => bar.events.filter((e) => e.hand === h).length)) * 32))
+        130 + Math.max(...(['R', 'L'] as const).flatMap((h) => [...new Set(bar.events.filter((e) => e.hand === h).map((e) => e.voice))]
+          .map((v) => bar.events.filter((e) => e.hand === h && e.voice === v).length))) * 32))
       const rows = page ? Math.ceil(score.bars.length / 3) : 1
       const rowWidths = Array.from({ length: rows }, (_, r) => widths.slice(page ? r * 3 : 0, page ? r * 3 + 3 : widths.length).reduce((a, b) => a + b, 20))
       const renderer = new Renderer(div, Renderer.Backends.SVG)
@@ -55,13 +56,14 @@ export default function Staff({ score, beat, assist }: { score: Score; beat: num
         if (first) new StaveConnector(treble, bass).setType('brace').setContext(ctx).draw()
         new StaveConnector(treble, bass).setType('singleRight').setContext(ctx).draw()
         ctx.setFont('Segoe UI', 11).fillText(bar.number === 0 ? 'pickup' : String(bar.number), x + 4, row * 270 + 18)
-        const make = (events: ScoreEvent[], clef: 'treble' | 'bass') => {
+        const make = (events: ScoreEvent[], clef: 'treble' | 'bass', polyphonic: boolean) => {
           const inForce = new Map<string, string>()
           return events.map((event) => {
             const ink = { fillStyle: colour(page ? '--ink' : event.hand === 'R' ? '--right' : '--left'), strokeStyle: colour(page ? '--ink' : event.hand === 'R' ? '--right' : '--left') }
             const rest = !event.pitches.length
-            const note = new StaveNote({ keys: rest ? [clef === 'treble' ? 'b/4' : 'd/3'] : event.pitches.map((p) => keyFor(p.name)),
+            const note = new StaveNote({ keys: rest ? [clef === 'treble' ? 'b/4' : polyphonic && event.voice === 0 ? 'e/4' : 'd/3'] : event.pitches.map((p) => keyFor(p.name)),
               duration: String(event.denominator) + (event.dotted ? 'd' : '') + (rest ? 'r' : ''), clef })
+            if (polyphonic) note.setStemDirection(event.voice === 0 ? 1 : -1)
             note.setStyle(ink).setLedgerLineStyle(ink)
             for (const [index, p] of event.pitches.entries()) {
               const [, letter, acc = '', octave] = /^([A-G])(#{1,2}|b{1,2})?([0-8])$/.exec(p.name)!
@@ -81,21 +83,32 @@ export default function Staff({ score, beat, assist }: { score: Score; beat: num
         }
         const rightEvents = bar.events.filter((e) => e.hand === 'R')
         const leftEvents = bar.events.filter((e) => e.hand === 'L')
-        const right = make(rightEvents, 'treble')
-        const left = make(leftEvents, 'bass')
+        const streams = [rightEvents, leftEvents].flatMap((events, h) => {
+          const voiceIds = [...new Set(events.map((e) => e.voice))]
+          return voiceIds.map((v) => {
+            const lane = events.filter((e) => e.voice === v)
+            return { events: lane, hand: h, notes: make(lane, h === 0 ? 'treble' : 'bass', voiceIds.length > 1) }
+          })
+        })
         const tuplets: Tuplet[] = []
-        for (const events of [rightEvents, leftEvents]) {
+        for (const { events } of streams) {
           for (let j = 0; j < events.length; j++) if (events[j].triplet) {
             tuplets.push(new Tuplet(events.slice(j, j + 3).map((e) => notes.get(e.id)!), { numNotes: 3, notesOccupied: 2 }))
             j += 2
           }
         }
-        const voices = [right, left].map((n) => new Voice({ numBeats: score.time[0], beatValue: score.time[1] }).setStrict(false).addTickables(n))
-        const beams = [Beam.generateBeams(right), Beam.generateBeams(left)]
-        new Formatter().joinVoices([voices[0]]).joinVoices([voices[1]]).format(voices, widths[i] - (noteStart - x) - 24)
-        voices[0].draw(ctx, treble)
-        voices[1].draw(ctx, bass)
-        beams.forEach((group, h) => group.forEach((beam) => beam.setStyle({ fillStyle: colour(page ? '--ink' : h === 0 ? '--right' : '--left'), strokeStyle: colour(page ? '--ink' : h === 0 ? '--right' : '--left') }).setContext(ctx).draw()))
+        // Attach beams before drawing voices so VexFlow suppresses individual flags.
+        const beams = streams.map(({ notes: n, hand: h, events }) => Beam.generateBeams(n,
+          new Set(bar.events.filter((e) => e.hand === (h === 0 ? 'R' : 'L')).map((e) => e.voice)).size > 1 ? { stemDirection: events[0].voice === 0 ? 1 : -1 } : {}))
+        const voices = streams.map(({ notes: n }) => new Voice({ numBeats: score.time[0], beatValue: score.time[1] }).setStrict(false).addTickables(n))
+        const formatter = new Formatter()
+        for (const hand of [0, 1]) formatter.joinVoices(voices.filter((_, j) => streams[j].hand === hand))
+        formatter.format(voices, widths[i] - (noteStart - x) - 24)
+        voices.forEach((v, j) => v.draw(ctx, streams[j].hand === 0 ? treble : bass))
+        beams.forEach((group, j) => group.forEach((beam) => {
+          const ink = colour(page ? '--ink' : streams[j].hand === 0 ? '--right' : '--left')
+          beam.setStyle({ fillStyle: ink, strokeStyle: ink }).setContext(ctx).draw()
+        }))
         tuplets.forEach((t) => t.setStyle({ fillStyle: colour('--ink'), strokeStyle: colour('--ink') }).setContext(ctx).draw())
         const beats = [...new Set(bar.events.map((e) => e.start))].sort((a, b) => a - b)
         for (const at of beats) {
@@ -106,7 +119,8 @@ export default function Staff({ score, beat, assist }: { score: Score; beat: num
         x += widths[i]
       })
       for (const hand of ['R', 'L'] as const) {
-        const events = score.events.filter((e) => e.hand === hand)
+        for (const voice of new Set(score.events.filter((e) => e.hand === hand).map((e) => e.voice))) {
+        const events = score.events.filter((e) => e.hand === hand && e.voice === voice)
         events.forEach((e, i) => {
           if (!e.tieIn) return
           const previous = events[i - 1]
@@ -117,11 +131,12 @@ export default function Staff({ score, beat, assist }: { score: Score; beat: num
           if (split) { draw(notes.get(previous.id), undefined); draw(undefined, notes.get(e.id)) }
           else draw(notes.get(previous.id), notes.get(e.id))
         })
+        }
       }
       setPositions(anchors)
       div.dataset.noteXs = anchors.map((p) => Math.round(p.x)).join(',')
       div.dataset.barCount = String(score.bars.length)
-      setInfo(`${score.bars.length - (score.pickup ? 1 : 0)} bars and pickup drawn from the score`)
+      setInfo(`${score.bars.length - (score.pickup ? 1 : 0)} bars${score.pickup ? ' and pickup' : ''} drawn from the score`)
     }).catch((e) => setInfo(`Could not draw staff: ${String(e)}`))
     return () => { cancelled = true }
   }, [score, page])

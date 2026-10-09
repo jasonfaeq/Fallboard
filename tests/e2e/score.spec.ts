@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { definePiece, sectionBounds, type PieceSpec } from '../../src/engine/score'
 import chopin from '../../src/content/pieces/chopin-op28-4'
+import bach from '../../src/content/pieces/bach-bwv846'
 
 const phrase: PieceSpec = { id: 'test', title: 'Test', composer: 'Original', source: 'Original test phrase',
   licence: 'original', verified: false, tempo: 60, key: 'C', time: [4, 4], sections: [{ name: 'A', bars: [1, 2] }],
@@ -40,4 +41,27 @@ test('score: complete Chopin preserves pickup, 25 bars, closing chords and ornam
   expect(chopin.soundNotes.filter((n) => n.start === 96).map((n) => n.pitch.name).sort()).toEqual(['E1', 'E2', 'E3', 'E4', 'G3', 'B3'].sort())
   expect(sectionBounds(chopin, [1, 4])).toEqual({ start: -1, end: 16 })
   expect(sectionBounds(chopin, [21, 25])).toEqual({ start: 80, end: 99 })
+})
+
+test('score: independent voices validate rhythm and keep their ties separate', () => {
+  const score = definePiece({ ...phrase, left: ['C3:1~ | C3:1', 'r:2 C3:2~ | C3:1'] })
+  expect(score.soundNotes.filter((n) => n.hand === 'L').map((n) => [n.start, n.beats])).toEqual([[0, 8], [2, 6]])
+  expect(() => definePiece({ ...phrase, left: ['r:1 | r:1', 'r:1'] })).toThrow(/bar counts/)
+  expect(() => definePiece({ ...phrase, left: ['r:1 | r:1', 'C3:2 | r:1'] })).toThrow(/expected 4/)
+})
+
+test('score: complete Bach has 35 bars, held bass voices and original closing patterns', () => {
+  expect(bach.verified).toBe(false)
+  expect(bach.bars).toHaveLength(35)
+  expect(bach.end).toBe(140)
+  expect(bach.soundNotes).toHaveLength(549)
+  expect(bach.soundNotes.filter((n) => n.start < 2).map((n) => [n.pitch.name, n.start, n.beats])).toEqual([
+    ['C4', 0, 2], ['E4', 0.25, 1.75], ['G4', 0.5, 0.25], ['C5', 0.75, 0.25],
+    ['E5', 1, 0.25], ['G4', 1.25, 0.25], ['C5', 1.5, 0.25], ['E5', 1.75, 0.25],
+  ])
+  expect(bach.soundNotes.filter((n) => n.hand === 'L' && n.start >= 128 && n.start < 132).map((n) => [n.pitch.name, n.start, n.beats])).toEqual([
+    ['C2', 128, 4], ['C3', 128.25, 3.75],
+  ])
+  expect(bach.soundNotes.filter((n) => n.start === 136).map((n) => n.pitch.name).sort()).toEqual(['C2', 'C3', 'E4', 'G4', 'C5'].sort())
+  expect(sectionBounds(bach, [33, 35])).toEqual({ start: 128, end: 140 })
 })

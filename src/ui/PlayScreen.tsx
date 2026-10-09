@@ -20,7 +20,7 @@ export default function PlayScreen({ player, input }: { player: PiecePlayer; inp
   const sounding = new Map(player.sounding.map((n) => [n.pitch.midi, n.hand]))
   const next = score.events.find((e) => e.start >= player.beat && e.start < player.bounds.end && e.pitches.length)
   return <section className="piece-player" aria-label="Piece player">
-    <div className="piece-heading"><div><h2>{score.title}</h2><p>{score.composer} · Largo · {score.tempo} BPM</p></div>
+    <div className="piece-heading"><div><h2>{score.title}</h2><p>{score.composer} · {score.tempo} BPM</p></div>
       <span className="unverified">{score.verified ? 'Notes confirmed' : 'Transcription awaiting your listening check'}</span></div>
     <div className="play-controls">
       <button onClick={() => void player.listen()}>Listen</button>
@@ -56,8 +56,8 @@ export default function PlayScreen({ player, input }: { player: PiecePlayer; inp
       <p className="hand-legend"><span>● Right hand</span><span>● Left hand</span></p></div>}
     {assist === 'full' && <p className="note-names">{player.sounding.length ? 'Now: ' + [...new Set(player.sounding.map((n) => n.pitch.name))].join(' · ') :
       next ? 'Next: ' + next.pitches.map((p) => p.name).join(' · ') : 'End of section'}</p>}
-    <p className="piece-note">Listen at a steady practice tempo. Ornaments are included; expressive pedal, rubato and fermata holds come later. Playing is not scored yet.</p>
+    <p className="piece-note">Listen at a steady practice tempo. Playing is not scored yet.</p>
     <details><summary>Practice plan and source</summary><ol>{score.practice.map((p) => <li key={p}>{p}</li>)}</ol>
-      <p>{score.source}</p><p>{score.licence}. Notes stay unverified until you confirm them.</p></details>
+      <p>{score.notes}</p><p>{score.source}</p><p>{score.licence}. Notes stay unverified until you confirm them.</p></details>
   </section>
 }

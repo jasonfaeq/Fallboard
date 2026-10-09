@@ -3,7 +3,7 @@ import { PIANO_HIGH, PIANO_LOW, noteNumber } from './input'
 export type Hand = 'L' | 'R'
 export interface Pitch { name: string; midi: number }
 export interface ScoreEvent {
-  id: string; hand: Hand; bar: number; start: number; beats: number
+  id: string; hand: Hand; voice: number; bar: number; start: number; beats: number
   pitches: Pitch[]; denominator: number; dotted: boolean; triplet: boolean
   grace: Pitch[]; tieIn: boolean; tieOut: boolean
 }
@@ -15,7 +15,7 @@ export interface Section { name: string; bars: [number, number] }
 export interface PieceSpec {
   id: string; title: string; composer: string; source: string; licence: string; verified: boolean
   tempo: number; key: 'C' | 'Em'; time: [number, number]; pickup?: number; finalBeats?: number
-  right: string; left: string; sections: Section[]; practice: string[]; notes?: string
+  right: string | string[]; left: string | string[]; sections: Section[]; practice: string[]; notes?: string
 }
 export interface Score extends PieceSpec { bars: Bar[]; events: ScoreEvent[]; soundNotes: ScoreNote[]; start: number; end: number }
 
@@ -32,20 +32,22 @@ export function definePiece(spec: PieceSpec): Score {
   if (!Number.isFinite(spec.tempo) || spec.tempo <= 0) throw new Error('Invalid tempo')
   if (!spec.time.every((n) => Number.isInteger(n) && n > 0)) throw new Error('Invalid time signature')
   const beatsPerBar = spec.time[0] * 4 / spec.time[1]
-  const rightBars = spec.right.trim().split('|').map((s) => s.trim())
-  const leftBars = spec.left.trim().split('|').map((s) => s.trim())
-  if (rightBars.length !== leftBars.length) throw new Error('Hands have different bar counts')
-  const lengths = rightBars.map((_, i) => i === 0 && spec.pickup ? spec.pickup :
-    i === rightBars.length - 1 && spec.finalBeats ? spec.finalBeats : beatsPerBar)
+  const streams = (text: string | string[]) => (Array.isArray(text) ? text : [text]).map((s) => s.trim().split('|').map((bar) => bar.trim()))
+  const right = streams(spec.right), left = streams(spec.left)
+  const count = right[0]?.length
+  if (!count || !left.length || [...right, ...left].some((bars) => bars.length !== count)) throw new Error('Hands/voices have different bar counts')
+  const lengths = right[0].map((_, i) => i === 0 && spec.pickup ? spec.pickup :
+    i === count - 1 && spec.finalBeats ? spec.finalBeats : beatsPerBar)
   if (lengths.some((b) => b <= 0 || b > beatsPerBar)) throw new Error('Invalid partial bar')
-  let start = -(spec.pickup ?? 0)
+  let start = spec.pickup ? -spec.pickup : 0
   const bars: Bar[] = lengths.map((beats, i) => {
     const bar = { number: i + (spec.pickup ? 0 : 1), start, beats, events: [] }
     start += beats
     return bar
   })
   const events: ScoreEvent[] = []
-  for (const [hand, lines] of [['R', rightBars], ['L', leftBars]] as const) {
+  for (const [hand, voices] of [['R', right], ['L', left]] as const) {
+    voices.forEach((lines, voice) => {
     let previous: ScoreEvent | undefined
     lines.forEach((line, b) => {
       const bar = bars[b]
@@ -67,8 +69,8 @@ export function definePiece(spec: PieceSpec): Score {
         if (tieIn && (!pitches.length || previous!.pitches.map((p) => p.name).join() !== pitches.map((p) => p.name).join())) {
           throw new Error(`${hand} bar ${bar.number}: tie must continue the same pitches`)
         }
-        const event: ScoreEvent = { id: `${hand}-${bar.number}-${bar.events.filter((e) => e.hand === hand).length}`,
-          hand, bar: bar.number, start: at, beats, pitches, denominator, dotted: !!dot,
+        const event: ScoreEvent = { id: `${hand}-${voice}-${bar.number}-${bar.events.filter((e) => e.hand === hand && e.voice === voice).length}`,
+          hand, voice, bar: bar.number, start: at, beats, pitches, denominator, dotted: !!dot,
           triplet: !!triplet, grace, tieIn, tieOut: !!tie }
         grace = []
         events.push(event)
@@ -82,12 +84,13 @@ export function definePiece(spec: PieceSpec): Score {
       if (Math.abs(at - bar.start - bar.beats) > EPS) throw new Error(`${hand} bar ${bar.number}: ${at - bar.start} beats, expected ${bar.beats}`)
     })
     if (previous?.tieOut) throw new Error('Unfinished tie at end of piece')
+    })
   }
   const soundNotes: ScoreNote[] = []
   const tied = new Map<string, ScoreNote>()
   for (const event of events) {
     for (const p of event.pitches) {
-      const key = `${event.hand}:${p.name}`
+      const key = `${event.hand}:${event.voice}:${p.name}`
       let note = tied.get(key)
       if (event.tieIn && note) { note.beats += event.beats; note.eventIds.push(event.id) }
       else {

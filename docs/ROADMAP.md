@@ -55,6 +55,10 @@ One real piece, both hands, from keyboard to results: Chopin's Prelude in E mino
 
 ## Phase 2 — More pieces, then Venue 1
 
+- [x] Bach, Prelude No. 1 in C major, BWV 846 — requested and built 2026-10-09 (D-19).
+      All 35 bars, independent held bass voices, nine sections and a Piece selector.
+      *Needs Jason: Listen confirmation; `verified` remains false. Needs hardware test:
+      playing these sustained voices on the DEP-20.*
 - [ ] 🔀 Bach, Prelude in C minor (once Jason says which one).
 - [ ] 🔀 Beethoven, "Moonlight" Sonata, 1st movement (triplets, pedal marks).
 - [ ] The piece ladder: sections, hands separate, wait → slow → at tempo (`definePiece`);
