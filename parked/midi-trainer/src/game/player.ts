@@ -1,8 +1,17 @@
 import type { Engine } from '../engine/audio'
+import type { NoteEvent } from '../engine/input'
 import { sectionBounds, type Hand, type Score, type ScoreNote } from '../engine/score'
 
-/** Listen transport only; the mission templates/matcher are the next roadmap item. */
+/** listen = the game plays · play = the line keeps moving · wait = the line stops at each note until it is played */
+export type PlayMode = 'listen' | 'play' | 'wait'
+/** all score notes that start on the same beat */
+interface Group { start: number; notes: ScoreNote[] }
+
+/** The piece player's transport. Nothing is scored yet; the matcher is the next roadmap item. */
 export class PiecePlayer {
+  mode: PlayMode = 'listen'
+  /** play and wait modes: the game sounds the score too. Off = only the player's own notes are heard. */
+  guide = false
   state: 'idle' | 'countIn' | 'playing' | 'paused' | 'ending' | 'done' = 'idle'
   range: [number, number]
   loop = false
@@ -16,6 +25,11 @@ export class PiecePlayer {
   private revision = -1
   private endingAt = 0
   private request = 0
+  private groups: Group[] = []
+  private groupIndex = 0
+  private soundedGroup = -1
+  private pressed = new Set<number>()
+  private holding = false
 
   constructor(readonly engine: Engine, readonly score: Score) {
     this.range = [1, score.bars.at(-1)!.number]
@@ -31,16 +45,23 @@ export class PiecePlayer {
     return this.state === 'playing' ? this.queue.filter((n) => n.start <= this.beat && n.start + n.beats > this.beat) : []
   }
 
-  async listen() {
+  /** wait mode: the line is stopped until the due notes are played */
+  get waiting() { return this.holding }
+  /** wait mode: the MIDI notes of the group the line is stopped at */
+  get due() { return this.holding ? this.groups[this.groupIndex].notes.map((n) => n.pitch.midi) : [] }
+
+  listen() { return this.start('listen') }
+  async start(mode: PlayMode) {
     this.error = ''
     this.stop()
     const request = this.request
     await this.engine.start()
     if (request !== this.request) return
     if (this.engine.status !== 'ready' || this.engine.context?.state !== 'running') {
-      this.error = this.engine.error || 'Enable sound to start listening.'
+      this.error = this.engine.error || 'Enable sound to start.'
       return
     }
+    this.mode = mode
     this.cycles = 0
     this.engine.transport.setTempo(this.score.tempo)
     this.begin()
@@ -50,11 +71,30 @@ export class PiecePlayer {
     const { start, end } = this.bounds
     this.queue = this.score.soundNotes.filter((n) => n.start < end && n.start + n.beats > start && (this.hands === 'both' || n.hand === this.hands))
     this.cursor = 0
-    this.engine.transport.seek(start - 4)
+    this.groups = []
+    for (const note of this.queue) {
+      if (note.start < start) continue // tied over from before the section: nothing to press
+      const last = this.groups.at(-1)
+      if (last && last.start === note.start) last.notes.push(note)
+      else this.groups.push({ start: note.start, notes: [note] })
+    }
+    this.groupIndex = 0
+    this.soundedGroup = -1
+    this.pressed.clear()
+    this.holding = false
+    // Nothing is timed in wait mode, so it has no count-in (MISSIONS.md › Level flow).
+    const countIn = this.mode !== 'wait'
+    this.engine.transport.seek(countIn ? start - 4 : start)
     this.engine.transport.resume(this.engine.context!.currentTime + 0.04)
     this.revision = this.engine.transport.revision
-    this.state = 'countIn'
-    this.engine.setMetronome(true)
+    this.state = countIn ? 'countIn' : 'playing'
+    this.engine.setMetronome(countIn || this.metronome)
+    this.update()
+  }
+  /** Every input event; wait mode advances on the player's note-ons. */
+  onEvent(event: NoteEvent) {
+    if (event.type !== 'on' || this.mode !== 'wait' || this.state !== 'playing') return
+    this.pressed.add(event.note)
     this.update()
   }
   pause() {
@@ -62,6 +102,7 @@ export class PiecePlayer {
     this.engine.transport.pause()
     this.engine.setMetronome(false)
     this.engine.piano?.allNotesOff('bot')
+    this.holding = false
     this.state = 'paused'
   }
   resume() {
@@ -87,24 +128,59 @@ export class PiecePlayer {
     if (this.state === 'playing') this.engine.setMetronome(enabled)
   }
   private reschedule() {
+    this.revision = this.engine.transport.revision
+    if (this.mode === 'wait') return // stopping at a note must not cut the guide notes short
     this.engine.piano?.allNotesOff('bot')
     const beat = this.engine.transport.beatAt()
     this.cursor = this.queue.findIndex((n) => n.start + n.beats > beat)
     if (this.cursor < 0) this.cursor = this.queue.length
-    this.revision = this.engine.transport.revision
+  }
+  /** Wait mode: the line runs at tempo between groups and stops on a group until its notes were played. */
+  private updateWait(now: number) {
+    const transport = this.engine.transport
+    const done = (g: Group) => g.notes.every((n) => this.pressed.has(n.pitch.midi))
+    const advance = () => { this.pressed.clear(); this.groupIndex++ }
+    if (this.holding) {
+      if (!done(this.groups[this.groupIndex])) return
+      advance()
+      this.holding = false
+      transport.resume()
+    }
+    while (this.groupIndex < this.groups.length) {
+      const group = this.groups[this.groupIndex]
+      const time = transport.timeAtBeat(group.start)!
+      if (this.guide && this.soundedGroup < this.groupIndex && time <= now + 0.1) {
+        this.soundedGroup = this.groupIndex
+        for (const note of group.notes) {
+          this.engine.piano!.noteOn(note.pitch.midi, note.hand === 'R' ? 82 : 55, 'bot', Math.max(now, time))
+          this.engine.piano!.noteOff(note.pitch.midi, 'bot', Math.max(now, time) + note.beats * 60 / (transport.tempo * transport.rate))
+        }
+      }
+      if (time > now) break
+      if (done(group)) { advance(); continue } // played just before the line arrived: keep moving
+      transport.pause(group.start)
+      this.holding = true
+      break
+    }
+    this.revision = transport.revision
   }
   update() {
     if (!['countIn', 'playing', 'ending'].includes(this.state) || !this.engine.context) return
-    if (this.engine.transport.paused || this.engine.context.state !== 'running') { this.pause(); return }
+    if ((this.engine.transport.paused && !this.holding) || this.engine.context.state !== 'running') { this.pause(); return }
     if (this.revision !== this.engine.transport.revision) this.reschedule()
     const now = this.engine.context.currentTime
+    if (this.mode === 'wait' && this.state === 'playing') {
+      this.updateWait(now)
+      if (this.holding) return
+    }
     const beat = this.engine.transport.beatAt(now)
     const { start, end } = this.bounds
     if (this.state === 'countIn' && beat >= start) {
       this.state = 'playing'
       this.engine.setMetronome(this.metronome)
     }
-    while (this.cursor < this.queue.length) {
+    const sounds = this.mode === 'listen' || (this.mode === 'play' && this.guide)
+    while (sounds && this.cursor < this.queue.length) {
       const note = this.queue[this.cursor]
       const startTime = this.engine.transport.timeAtBeat(Math.max(start, note.start))!
       if (startTime > now + 0.1) break
@@ -138,6 +214,7 @@ export class PiecePlayer {
     this.engine.setMetronome(false)
     this.engine.transport.pause()
     this.engine.piano?.allNotesOff('bot')
+    this.holding = false
     this.state = 'idle'
   }
 }

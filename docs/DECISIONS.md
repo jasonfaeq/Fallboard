@@ -135,3 +135,43 @@ VexFlow aligns those voices on the same staff, with opposing stems. *Bach's held
 delayed inner note overlap; shortening either into a sequential stream would change the
 music. No importer or dependency is needed. The 35-bar public-domain Mutopia-5 source is
 transcribed in explicit pitches and remains unverified until Jason confirms it in Listen.*
+
+**D-20 · 2026-10-14 · A sheet music reader first; the MIDI trainer is parked** — Jason:
+"put all the MIDI stuff on hold". He wants a proper sheet music reader that shows the sheet
+music, the keys, or both; imports what he downloads from MuseScore; plays it back; and can
+show the music in 1, 2, 3 or 4 rows. The MIDI input and monitor, the Play along / Practise
+modes (including the then-uncommitted work), the text-notation score model, the VexFlow
+staff and the mission/career docs move to `parked/midi-trainer/` as a complete snapshot, with
+a README on how to bring them back. *Jason's call. The reader is useful without a keyboard,
+and its score display, timeline and playback are what the trainer needs later anyway.*
+(Supersedes D-13 for now. D-03, D-05, D-07, D-15, D-18 and D-19 are parked with the code;
+they apply again if the trainer returns, through a new entry.)
+
+**D-21 · 2026-10-14 · MusicXML, drawn by OpenSheetMusicDisplay** — Scores are MusicXML
+(`.mxl`, `.musicxml`, `.xml`), which musescore.com (Download → MusicXML) and MuseScore Studio
+(File → Export) both produce. OpenSheetMusicDisplay 2.1.3 parses and draws them; Jason approved
+the dependency on 2026-10-14. Licences: OSMD BSD-3-Clause; its VexFlow 1.2.93, loglevel and
+typescript-collections are MIT; jszip is MIT-or-GPL, used under MIT; the optional `gl` is
+BSD-2 and unused in the browser. Pinned exactly, because 2.2.x was less than two weeks old.
+Playback is ours: `reader/timeline.ts` walks OSMD's iterator, which follows repeats and
+voltas, merges ties and sounds the written pitches on the Salamander piano (D-17), scheduled
+on the audio-clock Transport (D-06). `.mscz`, MIDI and PDF files are refused with a message
+saying how to get MusicXML. VexFlow 5 is removed from `package.json`; the parked staff code
+needs it back. *OSMD has years of MusicXML engraving behind it (slurs, dynamics, repeats,
+several instruments); a renderer of our own would draw real MuseScore files badly for a long
+time. Its parsed model gives the playback notes without a second parser.* (Supersedes D-08's
+"our own Score model" and D-16 for the reader.)
+
+**D-22 · 2026-10-14 · Rows = zoom to fit** — "Rows: N" picks the zoom at which N lines
+(systems) of music fill the sheet panel, measured from the rendered layout. While playing,
+the current line stays at the top, so N−1 lines ahead are always visible. 1 row is a single
+endless line that scrolls sideways under the playhead. *Jason asked for 2, 3 or 4 rows;
+fitting the zoom gives exactly that on any window size, with no separate zoom control.*
+
+**D-23 · 2026-10-14 · Built-in pieces as MusicXML; imports stay in the browser** — The
+Chopin and Bach transcriptions (D-15/18/19) were converted once from the parked text
+notation to MusicXML in `src/content/scores/`. The converted files sound exactly what the old
+model did (604 and 549 notes, 125 s and 140 s; checked by a test). From now on they are
+edited as MusicXML, for example in MuseScore. Imported files are stored only in the browser
+(IndexedDB); nothing a user imports is written to the repo. *One format for everything, and
+copyrighted downloads never reach git (D-10, MUSIC.md).*

@@ -1,42 +1,27 @@
-// Validate typed piece data without starting a browser or adding a runtime dependency.
-import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { dirname, resolve, join } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
-import ts from 'typescript'
+// Check the built-in scores without starting a browser: each is MusicXML with a title, a composer,
+// a licence we may ship (MUSIC.md) and at least one measure, and is listed in src/reader/library.ts.
+// The old text-notation piece validator is parked in parked/midi-trainer/tools/validate.mjs.
+import { readdirSync, readFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const pieces = readdirSync(join(root, 'src/content/pieces')).filter((f) => f.endsWith('.ts'))
-const temp = mkdtempSync(join(tmpdir(), 'piano-score-check-'))
+const dir = join(root, 'src/content/scores')
+const library = readFileSync(join(root, 'src/reader/library.ts'), 'utf8')
+const files = readdirSync(dir).filter((f) => /\.(musicxml|xml)$/.test(f))
 let errors = 0
-let pending = 0
-try {
-  writeFileSync(join(temp, 'package.json'), '{"type":"module"}')
-  for (const relative of ['engine/input.ts', 'engine/score.ts', ...pieces.map((f) => `content/pieces/${f}`)]) {
-    const source = readFileSync(join(root, 'src', relative), 'utf8')
-    const code = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText
-      .replace(/(from\s+['"])(\.[^'"]+)(['"])/g, '$1$2.js$3')
-    const target = join(temp, relative.replace(/\.ts$/, '.js'))
-    mkdirSync(dirname(target), { recursive: true })
-    writeFileSync(target, code)
-  }
-  const ids = new Set()
-  for (const file of pieces) {
-    try {
-      const { default: score } = await import(pathToFileURL(join(temp, 'content/pieces', file.replace(/\.ts$/, '.js'))).href)
-      if (score.id !== file.slice(0, -3) || ids.has(score.id)) throw new Error('Piece id must be unique and match its filename')
-      ids.add(score.id)
-      if (!score.composer || !score.sections.length || !score.practice.length || !score.soundNotes.length) throw new Error('Piece metadata/practice plan is incomplete')
-      if (!score.licence.startsWith('public-domain') && !score.licence.startsWith('original')) throw new Error('Unsupported shipped composition licence')
-      if (!score.verified) pending++
-    } catch (e) {
-      errors++
-      console.error(`${file}: ${e.message}`)
-    }
-  }
-} finally {
-  if (dirname(temp) !== resolve(tmpdir())) throw new Error('Unexpected validation temp path')
-  rmSync(temp, { recursive: true, force: true })
+for (const file of files) {
+  const xml = readFileSync(join(dir, file), 'utf8')
+  const problems = []
+  if (!/<score-partwise[\s>]/.test(xml)) problems.push('not a partwise MusicXML score')
+  if (!/<work-title>[^<]+<\/work-title>|<movement-title>[^<]+<\/movement-title>/.test(xml)) problems.push('no title')
+  if (!/<creator type="composer">[^<]+<\/creator>/.test(xml)) problems.push('no composer')
+  const rights = /<rights>([^<]+)<\/rights>/.exec(xml)?.[1] ?? ''
+  if (!/^(public-domain|original)/.test(rights)) problems.push(`licence "${rights}" is not public-domain or original`)
+  if (!/<measure[\s>]/.test(xml)) problems.push('no measures')
+  if (!library.includes(`content/scores/${file}?raw`)) problems.push('not listed in src/reader/library.ts')
+  for (const p of problems) console.error(`${file}: ${p}`)
+  errors += problems.length
 }
-console.log(`${pieces.length} piece(s) checked · ${errors} error(s) · ${pending} awaiting Jason's note confirmation · mission validator still planned`)
+console.log(`${files.length} built-in score(s) checked · ${errors} error(s)`)
 process.exitCode = errors ? 1 : 0

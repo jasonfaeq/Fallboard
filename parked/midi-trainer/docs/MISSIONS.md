@@ -22,7 +22,16 @@ build a part, add an "As built" paragraph under it.
 
 As built (2026-10-09): the piece screen has Listen for a whole piece/section, with count-in,
 pause, rate and looping. It uses `game/player.ts`; no reusable templates, matching or scoring
-exist yet. Full/Staff/Page are implemented for this player. The modes below remain planned.
+exist yet. Full/Staff/Page are implemented for this player.
+
+As built (2026-10-09, later): the same player has two more buttons. **Play along** = the line
+keeps moving after a count-in and the player plays. **Practise** = wait mode: no count-in; the
+line runs at the chosen speed between groups and stops on each group until every note of it
+has had a fresh key press (wrong keys do nothing; a group played just before the line arrives
+does not stop it). Both are silent by default, so only the player's own notes are heard;
+"Hear the piece while I play" makes the game sound the score too. Section, Loop section,
+Hands and Speed apply to all three. Nothing is scored yet; the table below is still the plan
+for scoring.
 
 | Mode | Transport | Scores | Used for |
 |---|---|---|---|

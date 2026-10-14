@@ -1,5 +1,8 @@
 /// <reference types="vite/client" />
-import { MAX_VELOCITY, PIANO_HIGH, PIANO_LOW, noteNumber, type InputSource } from './input'
+import { MAX_VELOCITY, PIANO_HIGH, PIANO_LOW, noteNumber } from './notes'
+
+/** who is playing: the score's playback, or a click on the on-screen keyboard */
+export type Channel = 'score' | 'touch'
 
 export const SAMPLE_NAMES = ['A0', ...Array.from({ length: 7 }, (_, i) =>
   ['C', 'Ds', 'Fs', 'A'].map((pitch) => `${pitch}${i + 1}`)).flat(), 'C8']
@@ -7,7 +10,7 @@ export const SAMPLE_NAMES = ['A0', ...Array.from({ length: 7 }, (_, i) =>
 interface Voice {
   source: AudioBufferSourceNode
   gain: GainNode
-  channel: InputSource
+  channel: Channel
   note: number
   released: boolean
 }
@@ -17,7 +20,7 @@ export class Piano {
   private samples = new Map<number, AudioBuffer>()
   private held = new Map<string, Voice>()
   private voices = new Set<Voice>()
-  private pedal = new Set<InputSource>()
+  private pedal = new Set<Channel>()
   private loading: Promise<void> | null = null
   ready = false
 
@@ -40,7 +43,7 @@ export class Piano {
     return this.loading
   }
 
-  noteOn(note: number, velocity: number, channel: InputSource, when = this.context.currentTime) {
+  noteOn(note: number, velocity: number, channel: Channel, when = this.context.currentTime) {
     if (!this.ready || !Number.isInteger(note) || note < PIANO_LOW || note > PIANO_HIGH || velocity <= 0) return
     const key = `${channel}:${note}`
     const previous = this.held.get(key)
@@ -66,14 +69,14 @@ export class Piano {
     source.start(Math.max(when, this.context.currentTime))
   }
 
-  noteOff(note: number, channel: InputSource, when = this.context.currentTime) {
+  noteOff(note: number, channel: Channel, when = this.context.currentTime) {
     const key = `${channel}:${note}`
     const voice = this.held.get(key)
     this.held.delete(key)
     if (voice && !this.pedal.has(channel)) this.release(voice, when)
   }
 
-  sustain(down: boolean, channel: InputSource, when = this.context.currentTime) {
+  sustain(down: boolean, channel: Channel, when = this.context.currentTime) {
     if (down) this.pedal.add(channel)
     else {
       this.pedal.delete(channel)
@@ -83,7 +86,7 @@ export class Piano {
     }
   }
 
-  allNotesOff(channel?: InputSource) {
+  allNotesOff(channel?: Channel) {
     for (const voice of this.voices) if (!channel || voice.channel === channel) this.stop(voice)
     if (channel) {
       this.pedal.delete(channel)

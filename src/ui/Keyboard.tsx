@@ -1,40 +1,70 @@
-import { PIANO_HIGH, PIANO_LOW, isBlackKey, noteName } from '../engine/input'
+import { isBlackKey, noteName, pitchClass } from '../engine/notes'
 
-const WHITE_W = 10
-const HEIGHT = 56
-const BLACK_W = 6
-const BLACK_H = 35
+export interface Key { note: number; x: number; width: number; black: boolean }
 
-interface Key { note: number; x: number; black: boolean }
-
-export const KEYS: Key[] = []
-let whites = 0
-for (let note = PIANO_LOW; note <= PIANO_HIGH; note++) {
-  const black = isBlackKey(note)
-  KEYS.push({ note, black, x: black ? whites * WHITE_W - BLACK_W / 2 : whites * WHITE_W })
-  if (!black) whites++
+/** Keys from `low` to `high` across a width of 1; black keys sit on the line between two whites. */
+export function keyLayout(low: number, high: number): Key[] {
+  let whites = 0
+  for (let n = low; n <= high; n++) if (!isBlackKey(n)) whites++
+  const white = 1 / whites
+  const keys: Key[] = []
+  let i = 0
+  for (let note = low; note <= high; note++) {
+    const black = isBlackKey(note)
+    keys.push(black ? { note, black, x: i * white - white * 0.31, width: white * 0.62 } : { note, black, x: i * white, width: white })
+    if (!black) i++
+  }
+  return keys
 }
-export const KEYBOARD_WIDTH = whites * WHITE_W
 
-/** The 88-key keyboard. `held` lights the keys that are down. */
-export default function Keyboard({ held, sounding = new Map() }: { held: ReadonlyMap<number, unknown>; sounding?: ReadonlyMap<number, 'L' | 'R'> }) {
-  const key = (k: Key) => (
-    <rect
-      key={k.note}
-      className={`key ${k.black ? 'black' : 'white'}${sounding.has(k.note) ? ` guide-${sounding.get(k.note)}` : ''}${held.has(k.note) ? ' held' : ''}`}
-      data-note={k.note}
-      x={k.x + 0.5}
-      width={(k.black ? BLACK_W : WHITE_W) - 1}
-      height={k.black ? BLACK_H : HEIGHT}
-      rx={1}
-    >
-      <title>{noteName(k.note)}</title>
-    </rect>
-  )
-  return (
-    <svg className="keyboard" viewBox={`0 0 ${KEYBOARD_WIDTH} ${HEIGHT}`} role="img" aria-label="Piano keyboard">
-      {KEYS.filter((k) => !k.black).map(key)}
-      {KEYS.filter((k) => k.black).map(key)}
-    </svg>
-  )
+/** A C-to-B range that holds every note, at least three octaves wide, inside the 88 keys. */
+export function keyRange(low: number, high: number): [number, number] {
+  let from = Math.floor(low / 12) * 12
+  let to = Math.ceil((high + 1) / 12) * 12 - 1
+  for (let below = true; to - from + 1 < 36; below = !below) {
+    if (below && from >= 24) from -= 12
+    else if (to <= 107) to += 12
+    else if (from >= 24) from -= 12
+    else break
+  }
+  return [Math.max(21, from), Math.min(108, to)]
+}
+
+interface Props {
+  keys: Key[]
+  /** drawn size in px, so labels are not stretched */
+  width: number
+  height: number
+  /** note → staff index of the score note sounding on it */
+  lit: ReadonlyMap<number, number>
+  names: boolean
+  onPress: (note: number) => void
+  onRelease: (note: number) => void
+}
+
+/** The on-screen piano. Lit keys show which hand plays them; click a key to hear it. */
+export default function Keyboard({ keys, width, height, lit, names, onPress, onRelease }: Props) {
+  const blackHeight = height * 0.62
+  const font = Math.max(8, Math.min(13, (keys.find((k) => !k.black)?.width ?? 0) * width * 0.42))
+  const key = (k: Key) => {
+    const staff = lit.get(k.note)
+    const label = names || (!k.black && k.note % 12 === 0)
+    return <g key={k.note}>
+      <rect
+        className={`key ${k.black ? 'black' : 'white'}${staff === undefined ? '' : staff < 0 ? ' pressed' : ` lit-${Math.min(staff, 2)}`}`}
+        data-note={k.note}
+        x={k.x * width + 0.5} width={k.width * width - 1} height={k.black ? blackHeight : height} rx={k.black ? 2 : 3}
+        onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); onPress(k.note) }}
+        onPointerUp={() => onRelease(k.note)}
+        onPointerCancel={() => onRelease(k.note)}
+      ><title>{noteName(k.note)}</title></rect>
+      {label && !k.black && <text className="key-name" x={(k.x + k.width / 2) * width} y={height - 7} fontSize={font}>
+        {k.note % 12 === 0 ? noteName(k.note) : pitchClass(k.note)}</text>}
+      {label && k.black && names && <text className="key-name black" x={(k.x + k.width / 2) * width} y={blackHeight - 6} fontSize={font * 0.8}>{pitchClass(k.note)}</text>}
+    </g>
+  }
+  return <svg className="keyboard" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Piano keyboard">
+    {keys.filter((k) => !k.black).map(key)}
+    {keys.filter((k) => k.black).map(key)}
+  </svg>
 }

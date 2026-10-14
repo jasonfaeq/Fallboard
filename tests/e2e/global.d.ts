@@ -1,9 +1,10 @@
-import type { Input, NoteEvent } from '../../src/engine/input'
+import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
 import type { Engine } from '../../src/engine/audio'
-import type { PiecePlayer } from '../../src/game/player'
+import type { Player } from '../../src/reader/player'
+import type { Timeline } from '../../src/reader/timeline'
 
 declare global {
   interface Window {
-    __piano: { input: Input; engine: Engine; player: PiecePlayer; send: (e: NoteEvent) => void }
+    __piano: { engine: Engine; player: Player; timeline: Timeline | null; osmd: OpenSheetMusicDisplay | null }
   }
 }

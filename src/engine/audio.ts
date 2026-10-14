@@ -1,4 +1,3 @@
-import { MIDDLE_C, type NoteEvent } from './input'
 import { Piano } from './piano'
 
 /** All positions are derived from this clock, never accumulated by frames or timers. */
@@ -26,7 +25,7 @@ export class Transport {
     this.bpm = bpm
   }
   setRate(rate: number) {
-    if (!Number.isFinite(rate) || rate < 0.5 || rate > 1) throw new Error('Practice rate must be 0.5–1')
+    if (!Number.isFinite(rate) || rate < 0.25 || rate > 2) throw new Error('Playback rate must be 0.25–2')
     this.anchor()
     this.speed = rate
   }
@@ -57,6 +56,7 @@ export class Transport {
   }
 }
 
+/** AudioContext, master volume, limiter and the sampled piano. Scheduling lives in the reader's Player. */
 export class Engine {
   context: AudioContext | null = null
   piano: Piano | null = null
@@ -64,23 +64,17 @@ export class Engine {
   transport = new Transport(() => this.context?.currentTime ?? 0)
   status: 'off' | 'loading' | 'ready' | 'error' = 'off'
   error = ''
-  private ownSound = true
-  private metronome = false
-  private timer: ReturnType<typeof setInterval> | null = null
-  private nextClick = 0
-  private clickRevision = -1
-  private clicks = new Map<OscillatorNode, number>()
+  private level = 0.7
   private starting: Promise<void> | null = null
   onChange: () => void = () => {}
 
-  get keyboardOwnSound() { return this.ownSound }
-  set keyboardOwnSound(value: boolean) {
-    this.ownSound = value
-    if (value) this.piano?.allNotesOff('midi')
-    this.onChange()
-  }
-  get metronomeOn() { return this.metronome }
   get latency() { return (this.context?.baseLatency ?? 0) + (this.context?.outputLatency ?? 0) }
+  get running() { return this.status === 'ready' && this.context?.state === 'running' }
+  get volume() { return this.level }
+  set volume(value: number) {
+    this.level = Math.max(0, Math.min(1, value))
+    if (this.output && this.context) this.output.gain.setTargetAtTime(this.level, this.context.currentTime, 0.02)
+  }
 
   /** Called by a user gesture, so normal browser autoplay protection is respected. */
   start() {
@@ -96,7 +90,7 @@ export class Engine {
       if (!this.context) {
         this.context = new AudioContext({ latencyHint: 'interactive' })
         this.output = this.context.createGain()
-        this.output.gain.value = 0.7
+        this.output.gain.value = this.level
         const limiter = this.context.createDynamicsCompressor()
         limiter.threshold.value = -6
         limiter.knee.value = 0
@@ -105,10 +99,7 @@ export class Engine {
         limiter.release.value = 0.1
         this.output.connect(limiter).connect(this.context.destination)
         this.piano = new Piano(this.context, this.output)
-        this.context.onstatechange = () => {
-          if (this.context?.state !== 'running') this.panic()
-          this.onChange()
-        }
+        this.context.onstatechange = () => this.onChange()
       }
       await this.context.resume()
       await this.piano!.load()
@@ -120,86 +111,23 @@ export class Engine {
     this.onChange()
   }
 
-  /** Convert the device's performance timestamp using a fresh paired clock reading. */
-  audioTime(t: number) {
-    return (this.context?.currentTime ?? 0) + (t - performance.now()) / 1000
-  }
-  heardBeat(t: number) { return this.transport.beatAt(this.audioTime(t) - this.latency) }
-
-  onEvent(event: NoteEvent) {
-    if (this.status !== 'ready' || this.context?.state !== 'running') return
-    if (event.src === 'midi' && this.ownSound) return
-    // Dispatch happens now: an old timestamp remains useful to scoring, but cannot play in the past.
-    const when = Math.max(this.context.currentTime, this.audioTime(event.t))
-    if (event.type === 'on') this.piano!.noteOn(event.note, event.velocity, event.src, when)
-    else if (event.type === 'off') this.piano!.noteOff(event.note, event.src, when)
-    else this.piano!.sustain(event.down, event.src, when)
-  }
-
-  setMetronome(enabled: boolean) {
-    this.metronome = enabled && this.status === 'ready' && this.context?.state === 'running'
-    this.cancelClicks()
-    this.clickRevision = -1
-    if (this.timer) clearInterval(this.timer)
-    this.timer = null
-    if (this.metronome) {
-      this.tick()
-      // This timer only wakes the scheduler. The audio clock chooses every click time.
-      this.timer = setInterval(() => this.tick(), 25)
-    }
-    this.onChange()
-  }
-
-  tick() {
-    if (!this.metronome || !this.context) return
-    const now = this.context.currentTime
-    if (this.clickRevision !== this.transport.revision) {
-      this.cancelClicks()
-      this.nextClick = Math.ceil(this.transport.beatAt(now) - 1e-7)
-      this.clickRevision = this.transport.revision
-    }
-    if (this.transport.paused) return
-    this.nextClick = Math.max(this.nextClick, Math.ceil(this.transport.beatAt(now) - 1e-7))
-    for (let count = 0; count < 32; count++) {
-      const time = this.transport.timeAtBeat(this.nextClick)!
-      if (time > now + 0.1) break
-      this.click(Math.max(now, time), ((this.nextClick % 4) + 4) % 4 === 0)
-      this.nextClick++
-    }
-  }
-  private click(time: number, accent: boolean) {
-    const context = this.context!
+  /** One metronome click at an audio-clock time. */
+  click(time: number, accent: boolean) {
+    const context = this.context
+    if (!context || !this.output) return
     const osc = context.createOscillator()
     const gain = context.createGain()
     osc.frequency.value = accent ? 1400 : 900
-    gain.gain.setValueAtTime(0.12, time)
+    gain.gain.setValueAtTime(accent ? 0.16 : 0.1, time)
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.035)
-    osc.connect(gain).connect(this.output!)
-    this.clicks.set(osc, time)
-    osc.onended = () => { this.clicks.delete(osc); osc.disconnect(); gain.disconnect() }
+    osc.connect(gain).connect(this.output)
+    osc.onended = () => { osc.disconnect(); gain.disconnect() }
     osc.start(time)
     osc.stop(time + 0.04)
   }
-  private cancelClicks() {
-    for (const osc of this.clicks.keys()) osc.stop()
-    this.clicks.clear()
-  }
-  /** A short audio-clock chord for checking the voice before a score exists. */
-  demo() {
-    if (this.status !== 'ready' || this.context?.state !== 'running') return
-    const time = this.context.currentTime + 0.03
-    for (const offset of [0, 4, 7]) {
-      this.piano!.noteOn(MIDDLE_C + offset, 85, 'bot', time)
-      this.piano!.noteOff(MIDDLE_C + offset, 'bot', time + 0.8)
-    }
-  }
-  panic() {
-    this.transport.pause()
-    this.setMetronome(false)
-    this.piano?.allNotesOff()
-  }
   dispose() {
-    this.panic()
+    this.transport.pause()
+    this.piano?.allNotesOff()
     if (this.context) {
       this.context.onstatechange = null
       void this.context.close()

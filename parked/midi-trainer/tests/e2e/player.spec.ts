@@ -98,3 +98,51 @@ test('player: Bach selection draws both bass voices, plays the ending and switch
   await page.getByRole('button', { name: 'Stop', exact: true }).click()
   expect(errors).toEqual([])
 })
+
+test('player: Practise stops the line at each note until it is played, and stays silent without the guide', async ({ page }) => {
+  await page.goto('/')
+  const region = page.getByRole('region', { name: 'Piece player', exact: true })
+  const press = (...notes: number[]) => page.evaluate((ns) => {
+    // src 'midi': the keyboard makes its own sound, so the game must add none
+    for (const note of ns) window.__piano.send({ type: 'on', note, velocity: 80, t: performance.now(), src: 'midi' })
+    for (const note of ns) window.__piano.send({ type: 'off', note, t: performance.now(), src: 'midi' })
+  }, notes)
+  const beat = () => page.evaluate(() => window.__piano.player.beat)
+  const due = () => page.evaluate(() => window.__piano.player.due)
+  await page.getByLabel('Section', { exact: true }).selectOption('0')
+  await region.getByRole('button', { name: 'Practise · waits for you', exact: true }).click()
+  await expect.poll(due).toEqual([59]) // the pickup B3, with no count-in
+  expect(await beat()).toBe(-1)
+  await page.waitForTimeout(300)
+  expect(await beat()).toBe(-1)
+  await expect(page.getByTestId('player-status')).toContainText('Your turn · play B3')
+  await press(60) // a wrong note does not move the line
+  expect(await due()).toEqual([59])
+  await press(59)
+  await expect.poll(due).toEqual([71])
+  expect(await beat()).toBe(-0.25)
+  await press(71)
+  await expect.poll(due).toEqual([71, 55, 59, 64]) // bar 1: melody note with the first left-hand chord
+  await press(71, 55, 59)
+  expect(await due()).toHaveLength(4) // an incomplete chord keeps waiting
+  await press(64)
+  await expect.poll(due).toEqual([55, 59, 64]) // the repeated chord needs a fresh press
+  expect(await beat()).toBe(0.5)
+  expect(await page.evaluate(() => window.__piano.engine.piano!.activeVoices)).toBe(0)
+  await region.getByRole('button', { name: 'Stop', exact: true }).click()
+})
+
+test('player: Play along keeps moving and only sounds the score when the guide is on', async ({ page }) => {
+  await page.goto('/')
+  const region = page.getByRole('region', { name: 'Piece player', exact: true })
+  await page.getByLabel('Section', { exact: true }).selectOption('0')
+  await region.getByRole('button', { name: 'Play along', exact: true }).click()
+  await expect(page.getByTestId('player-status')).toContainText('Count-in')
+  await expect.poll(() => page.evaluate(() => window.__piano.player.beat), { timeout: 15000 }).toBeGreaterThan(1)
+  await expect(page.getByTestId('player-status')).toContainText('Playing along')
+  expect(await page.evaluate(() => window.__piano.engine.piano!.activeVoices)).toBe(0)
+  await page.getByLabel('Hear the piece while I play', { exact: true }).check()
+  await region.getByRole('button', { name: 'Play along', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.__piano.engine.piano!.activeVoices), { timeout: 15000 }).toBeGreaterThan(0)
+  await region.getByRole('button', { name: 'Stop', exact: true }).click()
+})
