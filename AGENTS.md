@@ -5,7 +5,7 @@ This file is the single source of truth; `CLAUDE.md` just points here.
 
 ## What this is
 
-**Fallboard (repo: Piano Trainer) is, for now, a piano sheet music reader** (D-20): import a score downloaded
+**Fallboard (formerly Piano Trainer) is, for now, a piano sheet music reader** (D-20): import a score downloaded
 from MuseScore (MusicXML), see it as sheet music, as falling keys onto a keyboard, or both,
 with 1–4 rows of music on screen, and hear it played on a sampled grand piano. It is built
 for one player, Jason, with the intent to sell it (Steam + paid web version) if it clearly

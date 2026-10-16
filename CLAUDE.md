@@ -6,7 +6,7 @@ All project instructions live in AGENTS.md (shared with Codex and Antigravity). 
 
 ## Claude-specific notes
 
-- Jason's working copy is on his Windows PC: `C:\Users\Jason\Main Folders\Projects\Piano Trainer`.
+- Jason's working copy is on his Windows PC: `C:\Users\Jason\Main Folders\Projects\Fallboard`.
   Edit files there directly; don't keep a diverging copy.
 - DJ Trainer (`C:\Users\Jason\Main Folders\Projects\DJ Trainer`) is reference only: read it,
   never write to it. Other agent sessions work in it and its working tree often has

@@ -179,6 +179,6 @@ copyrighted downloads never reach git (D-10, MUSIC.md).*
 **D-24 · 2026-10-16 · The app is called Fallboard** — Jason picked the name. A fallboard
 is the hinged lid over a piano's keys, and the name also fits the falling-keys view. It
 names the reader that exists today (D-20), not the parked trainer. The visible name (page
-title, header, package name) changed; the repo folder and the browser storage keys
-(`piano-trainer-library`, `piano-trainer:*`) keep the old name so imported scores and
-settings survive. *Not yet checked against Steam, domains or trademarks.*
+title, header, package name) and the repo folder (`Projects\Fallboard`) changed; the
+browser storage keys (`piano-trainer-library`, `piano-trainer:*`) keep the old name so
+imported scores and settings survive. *Not yet checked against Steam, domains or trademarks.*
