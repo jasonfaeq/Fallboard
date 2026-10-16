@@ -11,7 +11,7 @@ https://archive.org/metadata/SalamanderGrandPianoV3
 These MP3s are the 30-note browser conversion distributed by Tonejs/audio:
 https://github.com/Tonejs/audio/tree/efd8296360f9526e379bfbe5c1698ff54d6a1d34/salamander
 Original README retained alongside this notice; manifest.json records source and SHA-256.
-Piano Trainer copied these MP3 files unchanged. Playback transposes neighbouring samples
+Fallboard copied these MP3 files unchanged. Playback transposes neighbouring samples
 and scales their gain for velocity; it does not include the full 16-layer library,
 release noises or string resonance. This is a subset/conversion of the original library.
 

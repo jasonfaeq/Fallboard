@@ -237,7 +237,7 @@ export default function App() {
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14M3 10h14M3 16h14" /></svg> Scores
       </button>
       <div className="score-title">
-        <h1>{entry?.title ?? 'Piano Trainer'}</h1>
+        <h1>{entry?.title ?? 'Fallboard'}</h1>
         <p>{entry?.composer || (entry?.file ?? '')}</p>
       </div>
       <div className="transport">

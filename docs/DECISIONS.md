@@ -175,3 +175,10 @@ model did (604 and 549 notes, 125 s and 140 s; checked by a test). From now on t
 edited as MusicXML, for example in MuseScore. Imported files are stored only in the browser
 (IndexedDB); nothing a user imports is written to the repo. *One format for everything, and
 copyrighted downloads never reach git (D-10, MUSIC.md).*
+
+**D-24 · 2026-10-16 · The app is called Fallboard** — Jason picked the name. A fallboard
+is the hinged lid over a piano's keys, and the name also fits the falling-keys view. It
+names the reader that exists today (D-20), not the parked trainer. The visible name (page
+title, header, package name) changed; the repo folder and the browser storage keys
+(`piano-trainer-library`, `piano-trainer:*`) keep the old name so imported scores and
+settings survive. *Not yet checked against Steam, domains or trademarks.*
