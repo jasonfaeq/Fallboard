@@ -20,8 +20,8 @@ never in a way that makes a commercial version hard.
 
 ## What it does
 
-- **Import** MusicXML (`.mxl` or `.musicxml`), which is what musescore.com's
-  Download → MusicXML gives. Imported scores stay in the browser for next time.
+- **Import** MusicXML (`.mxl` or `.musicxml`) or MuseScore files (`.mscz`), which is what
+  musescore.com's Download gives (D-25). Imported scores stay in the browser for next time.
 - **Three views**: Sheet (the real score), Keys (notes falling onto a piano keyboard), or Both.
 - **Rows**: 1 (one line that scrolls sideways), 2, 3 or 4 lines of music on screen at once.
   While playing, the current line stays at the top (D-22).
@@ -41,7 +41,7 @@ never in a way that makes a commercial version hard.
 ## Non-goals (for now)
 
 - MIDI keyboard input, judging the player, missions, career, recitals: parked (D-20).
-- Editing notes (MuseScore does that), reading PDFs or photos, opening `.mscz` directly.
+- Editing notes (MuseScore does that), reading PDFs or photos.
 - Audio recordings; instrument sounds other than the piano.
 
 ## Music
@@ -54,5 +54,5 @@ committed (MUSIC.md).
 
 - Bring the MIDI trainer back on top of the reader (play along, wait mode, scoring):
   `parked/midi-trainer/README.md`.
-- Dynamics and pedalling in playback; `.mscz` and MIDI-file import.
+- Dynamics and pedalling in playback; MIDI-file import.
 - Desktop build with Tauri; a paid web version.

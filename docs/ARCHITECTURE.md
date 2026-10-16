@@ -9,6 +9,7 @@ part, describe how it actually works.
 
 ```
  .mxl / .musicxml ──▶ library.ts (IndexedDB, checks the file type)
+ .mscz / .mscx ──▶ mscz.ts ──▲ (converted to MusicXML text on import, D-25)
                           │ text or Blob
                           ▼
  ui/SheetView.tsx ── OpenSheetMusicDisplay: load → parsed MusicSheet → render (SVG)
@@ -23,8 +24,8 @@ part, describe how it actually works.
 ```
 
 Layers: `engine/` (sound, clock, note numbers) knows nothing of React or scores. `reader/`
-(timeline, player, library, prefs) has no DOM, apart from IndexedDB/localStorage in their
-own modules. `ui/` draws and forwards clicks.
+(timeline, player, library, prefs, mscz) has no DOM, apart from IndexedDB/localStorage in
+their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and forwards clicks.
 
 ## Timing (D-06)
 
@@ -107,8 +108,8 @@ separately. The page pauses playback when it is hidden.
 ## Persistence
 
 - `reader/library.ts`: IndexedDB `piano-trainer-library`, stores `meta` (title, composer,
-  file name, date) and `data` (the file's bytes). If storage fails, the score still opens
-  but is not kept.
+  file name, date) and `data` (the file's bytes; for a MuseScore file, the MusicXML it was
+  converted to). If storage fails, the score still opens but is not kept.
 - `reader/prefs.ts`: localStorage `piano-trainer:prefs` (view, rows, theme, note names,
   metronome, count-in, volume, last score) and `piano-trainer:score:<id>` (speed,
   transposition, muted staves). Every access is wrapped in try/catch.
@@ -125,9 +126,12 @@ Playwright on Edge (`channel: 'msedge'`; the bundled Chromium is not installed o
 PC). `npm test` type-checks the tests, builds, serves the preview on port 4183 and runs one
 worker. `window.__piano = { engine, player, timeline, osmd }` exposes state for assertions.
 Fixtures: `tests/fixtures/ode-repeat.musicxml` (and the same as `.mxl`): four bars with a
-repeat and 1st/2nd endings, so passes are 1 2 3 1 2 4.
+repeat and 1st/2nd endings, so passes are 1 2 3 1 2 4. `ode-repeat.mscz` and
+`chopin-op28-4.mscz` are the same Ode and the built-in Chopin saved by MuseScore Studio 4
+(thumbnails removed); they must give the same timelines as the MusicXML.
 
 Covered: the built-in timelines (note counts and lengths), import and library persistence,
+MuseScore-file conversion,
 refusal messages, playback with lit notes and keys, count-in, repeats, click-to-seek,
 Shift+click and L loops wrapping, transposition, muting, views, rows fitting (2/3/4 visible
 lines, decreasing zoom; 1 row scrolls), clicking keys, remembered settings, and the

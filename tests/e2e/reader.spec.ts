@@ -2,6 +2,9 @@ import { expect, test, type Page } from '@playwright/test'
 
 const ODE = 'tests/fixtures/ode-repeat.musicxml'
 const ODE_MXL = 'tests/fixtures/ode-repeat.mxl'
+// Saved by MuseScore Studio 4 from our own MusicXML (ode-repeat, and the built-in Chopin).
+const ODE_MSCZ = 'tests/fixtures/ode-repeat.mscz'
+const CHOPIN_MSCZ = 'tests/fixtures/chopin-op28-4.mscz'
 
 async function open(page: Page) {
   const errors: string[] = []
@@ -11,12 +14,12 @@ async function open(page: Page) {
   return errors
 }
 /** Import a file and wait until its timeline (not the previous score's) is ready. */
-async function importScore(page: Page, file: string) {
+async function importScore(page: Page, file: string, title = 'Ode to Joy (test)') {
   await page.evaluate(() => { (window as unknown as { previous: unknown }).previous = window.__piano.timeline })
   await page.getByRole('button', { name: 'Scores' }).click()
   await page.getByTestId('import-input').setInputFiles(file)
   await page.waitForFunction(() => window.__piano.timeline && window.__piano.timeline !== (window as unknown as { previous: unknown }).previous)
-  await expect(page.getByRole('heading', { name: 'Ode to Joy (test)' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: title })).toBeVisible()
 }
 const time = (page: Page) => page.evaluate(() => window.__piano.player.time)
 const summary = (page: Page) => page.evaluate(() => {
@@ -58,6 +61,21 @@ test('reader: MusicXML and .mxl imports follow repeats and endings, and stay in 
   expect(errors).toEqual([])
 })
 
+test('reader: MuseScore files (.mscz) open as the same music as their MusicXML', async ({ page }) => {
+  const errors = await open(page)
+  const sounds = () => page.evaluate(() => window.__piano.timeline!.sounds.map((s) => [s.midi, s.time, s.end, s.staff]))
+  const chopin = await sounds() // the built-in Chopin opens first
+  await importScore(page, CHOPIN_MSCZ, 'Prelude in E minor · Op. 28 No. 4')
+  expect(await summary(page)).toMatchObject({ sounds: 604, end: 125, bpm: 48 })
+  expect(await sounds()).toEqual(chopin)
+  expect(await page.locator('[data-testid=sheet] svg path').count()).toBeGreaterThan(100)
+  await importScore(page, ODE_MSCZ)
+  expect(await summary(page)).toEqual({ bars: [1, 2, 3, 1, 2, 4], sounds: 30, end: 12, bpm: 120, clicks: 24 })
+  await page.getByRole('button', { name: 'Scores' }).click()
+  await expect(page.getByRole('dialog', { name: 'Scores' }).getByText('Ludwig van Beethoven · ode-repeat.mscz')).toBeVisible()
+  expect(errors).toEqual([])
+})
+
 test('reader: dropped files that are not MusicXML explain what to download instead', async ({ page }) => {
   await open(page)
   /** drop a file on the window, as from Explorer */
@@ -68,8 +86,8 @@ test('reader: dropped files that are not MusicXML explain what to download inste
   }, [name, text])
   const message = page.getByTestId('message')
   await drop('song.mscz', 'PK\x03\x04 not a score')
-  await expect(message).toContainText('That is a MuseScore file')
-  await expect(message).toContainText('Download → MusicXML')
+  await expect(message).toContainText('This MuseScore file could not be read')
+  await expect(message).toContainText('File → Export → MusicXML')
   await drop('song.pdf', '%PDF-1.4')
   await expect(message).toContainText('picture of the music')
   await drop('song.mid', 'MThd')

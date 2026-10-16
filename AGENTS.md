@@ -6,7 +6,7 @@ This file is the single source of truth; `CLAUDE.md` just points here.
 ## What this is
 
 **Fallboard (formerly Piano Trainer) is, for now, a piano sheet music reader** (D-20): import a score downloaded
-from MuseScore (MusicXML), see it as sheet music, as falling keys onto a keyboard, or both,
+from MuseScore (MusicXML or `.mscz`), see it as sheet music, as falling keys onto a keyboard, or both,
 with 1–4 rows of music on screen, and hear it played on a sampled grand piano. It is built
 for one player, Jason, with the intent to sell it (Steam + paid web version) if it clearly
 works. Build for Jason now; don't block the path to selling later.
@@ -16,7 +16,8 @@ input, Play along / Practise modes, missions, career, recitals) is in `parked/mi
 with its code, tests and docs, plus a README on bringing it back. Don't build trainer
 features unless Jason asks; don't edit the parked folder except to keep it restorable.
 
-**State (2026-10-14):** the reader is built: MusicXML/`.mxl` import with a browser library,
+**State (2026-10-16):** the reader is built: MusicXML/`.mxl` and MuseScore `.mscz` import
+(D-25) with a browser library,
 Sheet/Keys/Both views, rows fitted to the panel, playback with playhead, lit notes, repeats,
 speed, loops, count-in, metronome, muting a hand, transposition, shortcuts and remembered
 settings. Open items are in `docs/ROADMAP.md` Phase R. When you build something, change its
@@ -129,6 +130,7 @@ src/engine/notes.ts      MIDI note numbers, names, piano range, OSMD half-tone c
 src/reader/timeline.ts   OSMD MusicSheet → Timeline: sounds, marks, passes, steps, clicks, staves
 src/reader/player.ts     plays a Timeline: play/pause/seek, speed, loop, count-in, metronome, mutes
 src/reader/library.ts    built-in scores, imported files in IndexedDB, file-type checks
+src/reader/mscz.ts       MuseScore .mscz/.mscx → MusicXML (our own reader; unzip, convert)
 src/reader/prefs.ts      remembered settings (localStorage)
 src/content/scores/      built-in MusicXML pieces
 src/ui/SheetView.tsx     OSMD rendering, rows fit, playhead, lit notes, click-to-seek, loop boxes

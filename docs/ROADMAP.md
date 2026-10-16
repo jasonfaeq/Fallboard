@@ -37,7 +37,9 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
 - [ ] 🔀 **Ornaments and timing marks**: trills, turns, fermatas, ritardando. Grace notes are
       played quickly on the beat.
 - [ ] **Big scores**: measure render time on a long score; render incrementally if slow.
-- [ ] `.mscz` import (MuseScore's own format), only if downloading MusicXML proves a hassle.
+- [x] **`.mscz` import** (MuseScore's own format, versions 2–4), converted to MusicXML in the
+      browser by our own reader — 2026-10-16 (D-25). *Needs Jason: try a few real musescore.com
+      downloads, especially MuseScore 3 files (none were on hand to test).*
 - [ ] MIDI-file import for the Keys view (a MIDI file has no sheet music).
 
 ## Later

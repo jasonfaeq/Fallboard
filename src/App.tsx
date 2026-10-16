@@ -4,6 +4,7 @@ import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
 import { Engine } from './engine/audio'
 import { Player } from './reader/player'
 import { buildTimeline, passAt, type Timeline } from './reader/timeline'
+import { isMuseScoreFile, museScoreToMusicXml } from './reader/mscz'
 import { BUILT_IN, checkFile, deleteImported, importFile, listImported, loadImported, renameImported, sourceFrom, type ScoreEntry, type ScoreSource } from './reader/library'
 import { ROW_CHOICES, loadPrefs, loadScorePrefs, savePrefs, saveScorePrefs, type Prefs, type ScorePrefs, type View } from './reader/prefs'
 import SheetView from './ui/SheetView'
@@ -85,9 +86,17 @@ export default function App() {
   const importFiles = async (files: FileList | File[]) => {
     const file = files[0]
     if (!file) return
-    const data = await file.arrayBuffer()
+    let data = await file.arrayBuffer()
     const problem = checkFile(file.name, data)
     if (problem) { setMessage({ text: problem, error: true }); return }
+    if (isMuseScoreFile(file.name)) {
+      try {
+        data = new TextEncoder().encode(await museScoreToMusicXml(data)).buffer as ArrayBuffer
+      } catch (e) {
+        setMessage({ text: `This MuseScore file could not be read: ${(e as Error).message}. In MuseScore Studio, use File → Export → MusicXML and import that instead.`, error: true })
+        return
+      }
+    }
     const { entry: added, saved } = await importFile(file.name, data)
     setMessage(saved ? null : { text: 'Opened, but this browser would not keep a copy for next time.', error: false })
     setImported(await listImported())
@@ -337,6 +346,6 @@ export default function App() {
       </div>
     </div>}
 
-    {dropping && <div className="drop-overlay" aria-hidden="true">Drop a MusicXML file to open it</div>}
+    {dropping && <div className="drop-overlay" aria-hidden="true">Drop a score file to open it</div>}
   </div>
 }

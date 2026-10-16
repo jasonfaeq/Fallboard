@@ -2,6 +2,7 @@
 // (IndexedDB), so an imported score is still there next time. Nothing leaves the computer.
 import chopin from '../content/scores/chopin-op28-4.musicxml?raw'
 import bach from '../content/scores/bach-bwv846.musicxml?raw'
+import { isMuseScoreFile } from './mscz'
 
 export interface ScoreEntry {
   id: string
@@ -24,13 +25,14 @@ export type ScoreSource = string | Blob
 const ZIP = [0x50, 0x4b, 0x03, 0x04]
 const isZip = (bytes: Uint8Array) => ZIP.every((b, i) => bytes[i] === b)
 
-/** Explains files that are not MusicXML, so the player knows what to download instead. */
+/** Explains files that cannot be opened, so the player knows what to download instead.
+ *  MuseScore files (.mscz/.mscx) pass: they are converted to MusicXML on import (mscz.ts). */
 export function checkFile(name: string, data: ArrayBuffer): string | null {
   const lower = name.toLowerCase()
   const bytes = new Uint8Array(data, 0, Math.min(data.byteLength, 512))
   const head = new TextDecoder().decode(bytes)
   const howTo = 'On musescore.com, open the score and choose Download → MusicXML. In MuseScore Studio, use File → Export → MusicXML.'
-  if (lower.endsWith('.mscz') || lower.endsWith('.mscx')) return `That is a MuseScore file. ${howTo}`
+  if (isMuseScoreFile(lower)) return null
   if (lower.endsWith('.mid') || lower.endsWith('.midi') || head.startsWith('MThd')) return `MIDI files have no sheet music in them. ${howTo}`
   if (lower.endsWith('.pdf') || head.startsWith('%PDF')) return `A PDF is a picture of the music, so it cannot be played. ${howTo}`
   if (isZip(bytes)) return lower.endsWith('.mxl') || lower.endsWith('.zip') ? null : `This compressed file is not a MusicXML (.mxl) file. ${howTo}`
@@ -81,7 +83,7 @@ export async function listImported(): Promise<ScoreEntry[]> {
 export async function importFile(name: string, data: ArrayBuffer): Promise<{ entry: ScoreEntry; saved: boolean }> {
   const entry: ScoreEntry = {
     id: `file:${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-    title: name.replace(/\.(musicxml|xml|mxl)$/i, ''), composer: '', file: name, added: Date.now(), builtIn: false,
+    title: name.replace(/\.(musicxml|xml|mxl|mscz|mscx)$/i, ''), composer: '', file: name, added: Date.now(), builtIn: false,
   }
   try {
     await run('data', 'readwrite', (s) => s.put(data, entry.id))

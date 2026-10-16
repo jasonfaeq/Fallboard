@@ -182,3 +182,21 @@ names the reader that exists today (D-20), not the parked trainer. The visible n
 title, header, package name) and the repo folder (`Projects\Fallboard`) changed; the
 browser storage keys (`piano-trainer-library`, `piano-trainer:*`) keep the old name so
 imported scores and settings survive. *Not yet checked against Steam, domains or trademarks.*
+
+**D-25 · 2026-10-16 · MuseScore files open directly, converted by our own reader** — `.mscz`
+(and bare `.mscx`) files from MuseScore 2, 3 and 4 are imported: `reader/mscz.ts` unzips
+them (the browser's `DecompressionStream`), reads the `.mscx` with `DOMParser` and writes
+MusicXML, which is what the library stores and OSMD draws, so the timeline and sheet are
+unchanged. It covers parts, staves, voices, chords, rests, grace notes, tuplets, ties,
+slurs, beams (MuseScore's marks, else grouped by beat), clefs, keys, times, tempo, dynamics,
+text, 8va/8vb, pedal, hairpins, repeats, voltas and jumps; lyrics, chord symbols and layout
+are dropped. Checked against MuseScore Studio 4.7.3's own MusicXML export of six files
+(Chopin, Bach and the test Ode saved by MuseScore 4, a real MuseScore 2 download in MS2 and
+MS4 form, and MuseScore's 25-part test score): the same notes, times, spelling, beams, ties
+and repeats. Transposing instruments come out at concert pitch. *Jason asked for getting
+scores to be easy (2026-10-16). MuseScore's own converter (webmscore) is GPL, ruled out by
+D-10, and a MIDI file has no notation.* Not built: downloading from musescore.com the way
+LibreScore/dl-librescore do. Those tools get around MuseScore's download paywall and fetch
+page images and MIDI, not notation; that has no place in a paid app. The `app-librescore`
+zip Jason shared holds only its docs, translations and a build workflow, no downloader.
+(Supersedes D-21's refusal of `.mscz`, and the `.mscz` non-goal in VISION.md.)

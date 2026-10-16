@@ -1,7 +1,7 @@
 # Music — scores, sound, licensing
 
-**Status (2026-10-14): scores are MusicXML, drawn by OpenSheetMusicDisplay and played on the
-Salamander piano (D-17, D-21, D-23).** The trainer's text notation, VexFlow staff and
+**Status (2026-10-16): scores are MusicXML (or MuseScore files converted to it), drawn by
+OpenSheetMusicDisplay and played on the Salamander piano (D-17, D-21, D-23, D-25).** The trainer's text notation, VexFlow staff and
 repertoire plan are parked in `parked/midi-trainer/docs/MUSIC.md`.
 
 ## Scores: MusicXML (D-21)
@@ -9,8 +9,12 @@ repertoire plan are parked in `parked/midi-trainer/docs/MUSIC.md`.
 - Accepted: `.mxl` (compressed MusicXML, MuseScore's default export) and `.musicxml` /
   `.xml`. Text is read as UTF-8, or UTF-16 when the file starts with a byte-order mark;
   `.mxl` is passed to OSMD as a Blob, which unzips it.
-- Refused, with a message saying how to get MusicXML: `.mscz`/`.mscx` (MuseScore's own
-  format), MIDI (no notation in it) and PDF (a picture of the music).
+- Accepted and converted: `.mscz`/`.mscx` (MuseScore's own format, from MuseScore 2, 3 or 4).
+  `reader/mscz.ts` turns them into MusicXML on import; the library keeps the MusicXML (D-25).
+  Dropped in the conversion: lyrics, chord symbols, layout. Transposing instruments are shown
+  at concert pitch. A file it cannot read gets a message pointing to File → Export.
+- Refused, with a message saying how to get MusicXML: MIDI (no notation in it) and PDF (a
+  picture of the music).
 - What plays: every pitched note in every part, ties merged, repeats and 1st/2nd endings
   followed, tempo marks applied (`<sound tempo>`). Not yet performed: dynamics, pedal marks,
   fermatas, ritardando, trills and other ornaments (ROADMAP Phase R). Grace notes are played
@@ -18,10 +22,11 @@ repertoire plan are parked in `parked/midi-trainer/docs/MUSIC.md`.
 
 ### Getting a score from MuseScore
 
-- **musescore.com**: open the score, choose **Download**, then **MusicXML**. Downloading may
-  need a MuseScore account, and some scores need a paid subscription.
-- **MuseScore Studio** (the free desktop app) with a `.mscz`: **File → Export →** MusicXML.
-- Then click **Scores → Import MusicXML…** in the reader, or drop the file on the window.
+- **musescore.com**: open the score, choose **Download**, then **MusicXML** or **MuseScore**.
+  Downloading may need a MuseScore account, and some scores need a paid subscription.
+- **MuseScore Studio** (the free desktop app): import the `.mscz` directly, or use
+  **File → Export →** MusicXML.
+- Then click **Scores → Import a score…** in the reader, or drop the file on the window.
 
 ## Built-in pieces (D-23)
 
