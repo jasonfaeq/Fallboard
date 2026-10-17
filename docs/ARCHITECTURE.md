@@ -50,8 +50,12 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   section is its first and last pass, so a repeated bar is told apart. The loop button shows
   the section's name while its loop is set; `[` and `]` loop the previous or next section
   (without one set, the first after or the last before the playhead).
-- **Speed up loops**: the player calls `onLoop(repeats)` each time a loop comes round; with
-  the setting on, the app adds 5 % to the speed until 100 % (it never slows a faster speed).
+- **Speed up loops** (D-33): the player calls `onLoop(repeats)` each time a loop comes round;
+  with the setting on, the app adds the step (2, 5 or 10 %, default 5) until the target
+  (50–200 %, default 100; it never slows a faster speed). With a start speed set (25–150 %;
+  default "the speed now"), a loop the player makes (L, Shift+click, a section) first sets
+  the speed to it; a loop restored with the score does not. Settings shows step, start and
+  target under the switch while it is on.
 - Icons are our own line drawings in `ui/Icons.tsx`; colours and controls are CSS variables
   and classes in `styles.css`.
 
@@ -188,7 +192,8 @@ separately. The page pauses playback when it is hidden.
   file name, date) and `data` (the file's bytes; for a MuseScore file, the MusicXML it was
   converted to). If storage fails, the score still opens but is not kept.
 - `reader/prefs.ts`: localStorage `piano-trainer:prefs` (view, rows, theme, note names,
-  metronome, count-in, volume, room, Speed up loops, keys split, last score) and `piano-trainer:score:<id>` (speed,
+  metronome, count-in, volume, room, Speed up loops with its step, start and target, keys
+  split, last score) and `piano-trainer:score:<id>` (speed,
   transposition, each staff's volume as `volumes`; an older `muted` list is read as volume 0;
   saved `sections` as `{ name, first, last }` pass indices, malformed ones dropped; `position`
   in score seconds and `loop` as `[first, last]` pass indices or null). Score settings are
@@ -230,7 +235,7 @@ Transport with a fake clock; pedal releases (and loops and a muted hand with the
 velocities from dynamics, fermata/rit./accel. times and ornament notes (timeline and what
 the player sends), hand volumes with the old-prefs migration, and the room setting. `practice.spec.ts` (the
 Ode fixture): saved sections across reloads; position and loop after a reload (also mid-play)
-and after opening another score.
+and after opening another score; Speed up loops with a start, a 10 % step and a 120 % target.
 
 Not covered: how real MuseScore downloads look and sound, and how the audio feels. Those
 need Jason.

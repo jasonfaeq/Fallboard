@@ -20,6 +20,10 @@ interface Props {
 }
 
 const SPEEDS = [0.5, 0.75, 1]
+const STEPS = [0.02, 0.05, 0.1]
+const percent = (from: number, to: number) => Array.from({ length: Math.round((to - from) / 5) + 1 }, (_, i) => (from + i * 5) / 100)
+const STARTS = percent(25, 150)
+const TARGETS = percent(50, 200)
 
 /** The settings that are changed now and then: pitch, labels, sheet colours, practice helpers, volume. */
 export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose, onSpeed, onVolume, onRoom, staves, handVolume, onHandVolume, onClose }: Props) {
@@ -57,7 +61,30 @@ export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose
         {SPEEDS.map((s) => <button key={s} className={Math.abs(speed - s) < 0.001 ? 'on' : ''} onClick={() => onSpeed(s)}>{s * 100}%</button>)}
       </div>
     </div>
-    {toggle('Speed up loops', prefs.speedUp, () => onPrefs({ speedUp: !prefs.speedUp }), '5 % faster each time a loop comes round, up to 100 %')}
+    {toggle('Speed up loops', prefs.speedUp, () => onPrefs({ speedUp: !prefs.speedUp }),
+      `${Math.round(prefs.speedUpStep * 100)} % faster each time a loop comes round, up to ${Math.round(prefs.speedUpTo * 100)} %`)}
+    {prefs.speedUp && <div className="sub-settings">
+      <div className="setting">
+        <div><span>Step</span></div>
+        <div className="segmented small" role="group" aria-label="Speed-up step">
+          {STEPS.map((s) => <button key={s} className={Math.abs(prefs.speedUpStep - s) < 1e-6 ? 'on' : ''} aria-pressed={Math.abs(prefs.speedUpStep - s) < 1e-6}
+            onClick={() => onPrefs({ speedUpStep: s })}>{Math.round(s * 100)}%</button>)}
+        </div>
+      </div>
+      <label className="setting">
+        <div><span>Start at</span><small>When a loop is set</small></div>
+        <select aria-label="Start speed" value={prefs.speedUpFrom} onChange={(e) => onPrefs({ speedUpFrom: Number(e.target.value) })}>
+          <option value={0}>The speed now</option>
+          {STARTS.map((s) => <option key={s} value={s}>{Math.round(s * 100)}%</option>)}
+        </select>
+      </label>
+      <label className="setting">
+        <div><span>Up to</span></div>
+        <select aria-label="Target speed" value={prefs.speedUpTo} onChange={(e) => onPrefs({ speedUpTo: Number(e.target.value) })}>
+          {TARGETS.map((s) => <option key={s} value={s}>{Math.round(s * 100)}%</option>)}
+        </select>
+      </label>
+    </div>}
     <div className="setting">
       <div><span>Transpose</span><small>Half steps, for this score</small></div>
       <div className="stepper">

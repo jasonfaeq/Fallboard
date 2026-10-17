@@ -351,3 +351,6 @@ kbd { display: inline-block; min-width: 26px; text-align: center; font: 600 12px
 @media (max-width: 560px) {
   .sections { left: 12px; margin-left: 0; }
 }
+.sub-settings { margin: -4px 0 4px; padding-left: 12px; border-left: 2px solid var(--line-strong); }
+.sub-settings .setting { padding: 4px 0; }
+.setting select { padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--stage); color: var(--ink); font: inherit; font-size: 13px; }

@@ -160,8 +160,14 @@ export default function App() {
     p.setLoop(range && t ? { start: t.passes[range[0]].time, end: t.passes[range[1]].end } : null)
     updateScorePrefs({ loop: range })
   }
+  /** a loop the player chose: with Speed up loops from a set speed, it starts there */
+  const startLoop = (range: [number, number]) => {
+    setLoop(range)
+    const { speedUp, speedUpFrom } = latest.current.prefs
+    if (speedUp && speedUpFrom > 0) setSpeed(speedUpFrom)
+  }
   const onPick = (time: number, pass: number, extend: boolean) => {
-    if (extend) { setLoop([Math.min(anchor.current, pass), Math.max(anchor.current, pass)]); return }
+    if (extend) { startLoop([Math.min(anchor.current, pass), Math.max(anchor.current, pass)]); return }
     anchor.current = pass
     if (loop && (pass < loop[0] || pass > loop[1])) setLoop(null)
     p.seek(time)
@@ -181,7 +187,7 @@ export default function App() {
     if (!timeline) return
     const i = passAt(timeline, p.time)
     anchor.current = i
-    setLoop([i, i])
+    startLoop([i, i])
   }
 
   // Saved sections: named loops, kept per score in the order they come in the piece.
@@ -197,7 +203,7 @@ export default function App() {
     const s = sections[index]
     if (!s || !timeline || s.last >= timeline.passes.length) return
     anchor.current = s.first
-    setLoop([s.first, s.last])
+    startLoop([s.first, s.last])
     p.seek(timeline.passes[s.first].time)
   }
   const stepSection = (direction: 1 | -1) => {
@@ -212,8 +218,11 @@ export default function App() {
   const closeSections = useCallback(() => setSectionsOpen(false), [])
 
   const setSpeed = (speed: number) => { p.setSpeed(speed); updateScorePrefs({ speed: p.speed }) }
-  // Speed up loops: each time round, 5 % faster until 100 %.
-  p.onLoop = () => { if (latest.current.prefs.speedUp && p.speed < 1) setSpeed(Math.min(1, p.speed + 0.05)) }
+  // Speed up loops: each time round a step faster until the target; a faster speed is left alone.
+  p.onLoop = () => {
+    const { speedUp, speedUpStep, speedUpTo } = latest.current.prefs
+    if (speedUp && p.speed < speedUpTo - 1e-6) setSpeed(Math.min(speedUpTo, p.speed + speedUpStep))
+  }
   const toggleFullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen()
     else void document.documentElement.requestFullscreen?.().catch(() => {})

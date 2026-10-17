@@ -279,3 +279,12 @@ renames the old one. It opens from a bookmark button next to the loop button, an
 loop the previous or next section, which is how Jason would move between hard passages at the
 piano. *If a built-in score's bars change in a later version, an out-of-range section is
 ignored rather than guessed.*
+
+**D-33 · 2026-10-17 · Speed up loops: a step, a start and a target** — The step is 2, 5 or
+10 % per time round, the target 50–200 % (so a passage can be pushed past tempo), and the
+start either "the speed now" (today's behaviour, the default) or 25–150 %. The start speed is
+applied when Jason makes a loop (L, Shift+click, picking a section), not on every Play, so
+pausing in the middle of the ramp and playing on keeps the speed reached; making the loop
+again starts the ramp again. A loop restored when a score reopens keeps the score's speed.
+Defaults are +5 % up to 100 % from the speed now, as in D-26. *Lists of fixed choices are
+quicker to set at the piano than free numbers.*

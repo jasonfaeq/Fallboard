@@ -58,6 +58,8 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
       score — 2026-10-17 (D-32).
 - [x] **Remember position and loop**: reopening a score or reloading the app comes back to
       the same place and loop; transposing keeps the loop — 2026-10-17.
+- [x] **Speed-up loop settings**: step 2/5/10 %, a start speed for each new loop, a target up
+      to 200 %; the default is still +5 % up to 100 % — 2026-10-17 (D-33).
 
 ## Later
 

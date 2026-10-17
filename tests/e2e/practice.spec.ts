@@ -125,3 +125,35 @@ test('practice: reopening a score brings back where you were and the loop', asyn
   expect(await loopOf(page)).toBeNull()
   expect(errors).toEqual([])
 })
+
+test('practice: Speed up loops can start at a set speed and step past 100 % to a target', async ({ page }) => {
+  await open(page)
+  await importOde(page)
+  await page.getByRole('button', { name: 'Count-in', exact: true }).click()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('switch', { name: 'Speed up loops' }).click()
+  await page.getByRole('group', { name: 'Speed-up step' }).getByRole('button', { name: '10%' }).click()
+  await page.getByLabel('Start speed').selectOption('1')
+  await page.getByLabel('Target speed').selectOption('1.2')
+  await expect(page.getByText('10 % faster each time a loop comes round, up to 120 %')).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  await page.getByLabel('Speed', { exact: true }).fill('50')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('l') // a new loop starts at 100 %
+  await expect.poll(() => page.evaluate(() => window.__piano.player.speed)).toBe(1)
+  await page.keyboard.press(' ')
+  await expect.poll(() => page.evaluate(() => window.__piano.player.speed), { timeout: 6000 }).toBe(1.1)
+  await expect.poll(() => page.evaluate(() => window.__piano.player.speed), { timeout: 6000 }).toBe(1.2)
+  await page.waitForTimeout(2500) // at least one more time round
+  expect(await page.evaluate(() => window.__piano.player.speed)).toBe(1.2)
+  await page.keyboard.press(' ')
+
+  // Remembered.
+  await page.reload()
+  await page.waitForFunction(() => !!window.__piano?.timeline)
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await expect(page.getByRole('group', { name: 'Speed-up step' }).getByRole('button', { name: '10%' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByLabel('Start speed')).toHaveValue('1')
+  await expect(page.getByLabel('Target speed')).toHaveValue('1.2')
+})
