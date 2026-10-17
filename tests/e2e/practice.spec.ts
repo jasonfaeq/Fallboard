@@ -80,3 +80,48 @@ test('practice: sections are saved per score, picked, renamed, deleted and kept 
   await expect(list.nth(0)).toContainText('Middle')
   expect(errors).toEqual([])
 })
+
+test('practice: reopening a score brings back where you were and the loop', async ({ page }) => {
+  const errors = await open(page)
+  await importOde(page)
+  await page.getByRole('button', { name: 'Count-in', exact: true }).click() // on by default
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('l')
+  await expect(page.getByRole('button', { name: 'Loop bar 3' })).toBeVisible()
+
+  const reload = async () => {
+    await page.reload()
+    await page.waitForFunction(() => !!window.__piano?.timeline && !!document.querySelector('[data-testid=sheet] svg'))
+    await expect(page.getByRole('heading', { name: 'Ode to Joy (test)' })).toBeVisible()
+  }
+  await reload()
+  await expect(page.getByRole('button', { name: 'Loop bar 3' })).toBeVisible()
+  expect(await loopOf(page)).toEqual({ start: 4, end: 6 })
+  expect(await time(page)).toBeCloseTo(4, 3)
+  await expect(page.getByTestId('position')).toContainText('Bar 3')
+
+  // Reloading while it plays keeps the place it had reached.
+  await page.keyboard.press(' ')
+  await expect.poll(() => time(page)).toBeGreaterThan(4.5)
+  await reload()
+  const reached = await time(page)
+  expect(reached).toBeGreaterThan(4.5)
+  expect(reached).toBeLessThan(6)
+
+  // Another score and back: the same place.
+  await page.keyboard.press('l') // loop off
+  await page.keyboard.press('ArrowLeft') // to bar 2 (more than 0.4 s into bar 3, so back to its start first)
+  await page.keyboard.press('ArrowLeft')
+  await expect(page.getByTestId('position')).toContainText('Bar 2')
+  await page.getByRole('button', { name: 'Scores' }).click()
+  await page.locator('.drawer').getByText('Prelude in E minor').first().click()
+  await expect(page.getByRole('heading', { name: /Prelude in E minor/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Scores' }).click()
+  await page.locator('.drawer').getByText('Ode to Joy (test)').first().click()
+  await page.waitForFunction(() => window.__piano.timeline?.passes.length === 6)
+  await expect(page.getByTestId('position')).toContainText('Bar 2')
+  expect(await time(page)).toBeCloseTo(2, 3)
+  expect(await loopOf(page)).toBeNull()
+  expect(errors).toEqual([])
+})

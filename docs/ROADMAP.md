@@ -56,6 +56,8 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
 - [x] **Saved sections per score**: save the loop under a name, pick a section to loop it
       and jump to its start, rename, delete, `[` `]` for the previous/next one, remembered per
       score — 2026-10-17 (D-32).
+- [x] **Remember position and loop**: reopening a score or reloading the app comes back to
+      the same place and loop; transposing keeps the loop — 2026-10-17.
 
 ## Later
 

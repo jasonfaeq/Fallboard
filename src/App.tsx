@@ -59,20 +59,32 @@ export default function App() {
   const [dropping, setDropping] = useState(false)
   const [pressed, setPressed] = useState<ReadonlySet<number>>(new Set())
   const anchor = useRef(0)
-  const latest = useRef({ entry, scorePrefs, timeline, prefs })
-  latest.current = { entry, scorePrefs, timeline, prefs }
+  const latest = useRef({ entry, scorePrefs, timeline, prefs, loop })
+  latest.current = { entry, scorePrefs, timeline, prefs, loop }
 
   const updatePrefs = (patch: Partial<Prefs>) => setPrefs((old) => { const next = { ...old, ...patch }; savePrefs(next); return next })
-  const updateScorePrefs = (patch: Partial<ScorePrefs>) => setScorePrefs((old) => {
-    const next = { ...old, ...patch }
+  // Saved at once (not in a state updater), so a page that is closing still keeps it.
+  const updateScorePrefs = (patch: Partial<ScorePrefs>) => {
+    const next = { ...latest.current.scorePrefs, ...patch }
+    latest.current.scorePrefs = next
     const id = latest.current.entry?.id
     if (id) saveScorePrefs(id, next)
-    return next
-  })
+    setScorePrefs(next)
+  }
+  // Where we are in the score is remembered whenever playback stops or moves, when another
+  // score opens and when the page goes away.
+  const rememberPosition = useRef(() => {})
+  rememberPosition.current = () => {
+    if (!p.timeline || !latest.current.entry) return
+    const position = Math.round(p.time * 1000) / 1000
+    if (Math.abs(position - latest.current.scorePrefs.position) > 1e-3) updateScorePrefs({ position })
+  }
 
   const openSource = useCallback((next: ScoreEntry, data: ScoreSource, closeLibrary = true) => {
+    rememberPosition.current()
     p.load(null)
     const saved = loadScorePrefs(next.id)
+    latest.current = { ...latest.current, entry: next, scorePrefs: saved }
     setScorePrefs(saved)
     p.speed = saved.speed
     p.setVolumes(saved.volumes)
@@ -125,11 +137,14 @@ export default function App() {
   // The sheet parsed the score (or transposed it): build what plays.
   const onLoaded = useCallback((sheet: OpenSheetMusicDisplay) => {
     osmd.current = sheet
-    const { entry: current, scorePrefs: sp, timeline: before } = latest.current
+    const { entry: current, scorePrefs: sp, timeline: before, loop: kept } = latest.current
     const built = buildTimeline(sheet.Sheet, sp.transpose)
-    p.load(built, before !== null)
+    // A newly opened score goes back to where it was left; a transposed one stays where it is.
+    const range = before !== null ? kept : sp.loop
+    p.load(built, before !== null ? p.time : sp.position)
     setTimeline(built)
-    setLoopPasses(null)
+    if (range) anchor.current = range[0]
+    setLoop(range && range[1] < built.passes.length ? range : null, built)
     if (current && !current.builtIn) {
       const title = sheet.Sheet.TitleString?.trim(), composer = sheet.Sheet.ComposerString?.trim() ?? ''
       if ((title && title !== current.title) || composer !== current.composer) {
@@ -140,10 +155,10 @@ export default function App() {
     }
   }, [p])
 
-  const setLoop = (range: [number, number] | null) => {
+  const setLoop = (range: [number, number] | null, t = latest.current.timeline) => {
     setLoopPasses(range)
-    const t = latest.current.timeline
     p.setLoop(range && t ? { start: t.passes[range[0]].time, end: t.passes[range[1]].end } : null)
+    updateScorePrefs({ loop: range })
   }
   const onPick = (time: number, pass: number, extend: boolean) => {
     if (extend) { setLoop([Math.min(anchor.current, pass), Math.max(anchor.current, pass)]); return }
@@ -245,7 +260,7 @@ export default function App() {
 
   // Redraw every frame while playing; otherwise only when something changes.
   useEffect(() => {
-    p.onChange = redraw
+    p.onChange = () => { redraw(); if (!p.playing) rememberPosition.current() }
     engine.current!.onChange = redraw
     engine.current!.volume = latest.current.prefs.volume
     engine.current!.room = latest.current.prefs.room
@@ -253,8 +268,10 @@ export default function App() {
     const tick = () => { if (p.playing) redraw(); frame = requestAnimationFrame(tick) }
     frame = requestAnimationFrame(tick)
     const hidden = () => { if (document.hidden) p.pause() }
+    const leaving = () => rememberPosition.current()
     document.addEventListener('visibilitychange', hidden)
-    return () => { cancelAnimationFrame(frame); document.removeEventListener('visibilitychange', hidden) }
+    window.addEventListener('pagehide', leaving)
+    return () => { cancelAnimationFrame(frame); document.removeEventListener('visibilitychange', hidden); window.removeEventListener('pagehide', leaving) }
   }, [p])
   useEffect(() => () => { p.dispose(); engine.current!.dispose() }, [p])
   useEffect(() => { p.metronome = prefs.metronome; p.countIn = prefs.countIn }, [p, prefs.metronome, prefs.countIn])

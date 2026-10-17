@@ -52,8 +52,8 @@ export class Player {
     return Math.max(1, Math.ceil((this.from - this.engine.transport.beatAt()) / this.beatSecondsAt(this.from) - 1e-6))
   }
 
-  load(timeline: Timeline | null, keepPosition = false) {
-    const at = keepPosition ? this.time : 0
+  /** Load a timeline (or none), stopped at `at` score seconds. */
+  load(timeline: Timeline | null, at = 0) {
     this.halt()
     this.timeline = timeline
     this.loop = null

@@ -1,5 +1,5 @@
 // Settings remembered in this browser: the reader's layout, and per score its speed, transposition,
-// each staff's volume and its saved sections. Storage can be unavailable (private windows); everything still works without it.
+// each staff's volume, its saved sections, and where you were in it (position and loop). Storage can be unavailable (private windows); everything still works without it.
 import type { Room } from '../engine/audio'
 
 export type View = 'sheet' | 'keys' | 'both'
@@ -22,11 +22,15 @@ export interface Prefs {
 /** a named loop: the first and last pass (an index into `Timeline.passes`, so repeats are told apart) */
 export interface Section { name: string; first: number; last: number }
 /** `volumes`: staff index → 0–1 (0 = muted); a staff not listed plays at full volume */
-export interface ScorePrefs { speed: number; transpose: number; volumes: Record<number, number>; sections: Section[] }
+export interface ScorePrefs {
+  speed: number; transpose: number; volumes: Record<number, number>; sections: Section[]
+  /** where the player was, in score seconds, and the loop as first and last pass */
+  position: number; loop: [number, number] | null
+}
 
 export const ROW_CHOICES = [1, 2, 3, 4] as const
 const DEFAULTS: Prefs = { view: 'both', rows: 2, theme: 'paper', noteNames: false, metronome: false, countIn: true, volume: 0.8, room: 'off', speedUp: false, split: 0.42, lastScore: '' }
-export const SCORE_DEFAULTS: ScorePrefs = { speed: 1, transpose: 0, volumes: {}, sections: [] }
+export const SCORE_DEFAULTS: ScorePrefs = { speed: 1, transpose: 0, volumes: {}, sections: [], position: 0, loop: null }
 
 function read<T extends object>(key: string, defaults: T): T {
   try {
@@ -47,6 +51,9 @@ export function loadScorePrefs(id: string): ScorePrefs {
   delete saved.muted
   if (!Array.isArray(saved.sections)) saved.sections = []
   saved.sections = saved.sections.filter((s) => s && typeof s.name === 'string' && Number.isInteger(s.first) && Number.isInteger(s.last) && s.last >= s.first)
+  if (typeof saved.position !== 'number' || !(saved.position >= 0)) saved.position = 0
+  const loop = saved.loop
+  if (!Array.isArray(loop) || !loop.every(Number.isInteger) || loop.length !== 2 || loop[1] < loop[0]) saved.loop = null
   return saved
 }
 export const saveScorePrefs = (id: string, prefs: ScorePrefs) => write(`piano-trainer:score:${id}`, prefs)

@@ -190,7 +190,13 @@ separately. The page pauses playback when it is hidden.
 - `reader/prefs.ts`: localStorage `piano-trainer:prefs` (view, rows, theme, note names,
   metronome, count-in, volume, room, Speed up loops, keys split, last score) and `piano-trainer:score:<id>` (speed,
   transposition, each staff's volume as `volumes`; an older `muted` list is read as volume 0;
-  saved `sections` as `{ name, first, last }` pass indices, malformed ones dropped).
+  saved `sections` as `{ name, first, last }` pass indices, malformed ones dropped; `position`
+  in score seconds and `loop` as `[first, last]` pass indices or null). Score settings are
+  written at once, not in a React state updater, so the page closing still keeps them.
+- **Where you were**: the app saves the position whenever the player changes while not
+  playing (pause, seek, stop, the end), before another score opens, and on `pagehide`
+  (a reload while playing). Opening a score loads its timeline at that position with its loop;
+  transposing keeps the current position and loop. A loop beyond the score's passes is dropped.
   Every access is wrapped in try/catch.
 
 ## Build & run
@@ -223,7 +229,8 @@ lines, decreasing zoom; 1 row scrolls), clicking keys, remembered settings, the
 Transport with a fake clock; pedal releases (and loops and a muted hand with the pedal),
 velocities from dynamics, fermata/rit./accel. times and ornament notes (timeline and what
 the player sends), hand volumes with the old-prefs migration, and the room setting. `practice.spec.ts` (the
-Ode fixture): saved sections across reloads.
+Ode fixture): saved sections across reloads; position and loop after a reload (also mid-play)
+and after opening another score.
 
 Not covered: how real MuseScore downloads look and sound, and how the audio feels. Those
 need Jason.
