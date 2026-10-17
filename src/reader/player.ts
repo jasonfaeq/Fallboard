@@ -16,6 +16,11 @@ export class Player {
   speed = 1
   metronome = false
   countIn = false
+  /** how long the count-in is: `countInLength` bars or beats */
+  countInLength = 1
+  countInUnit: 'bars' | 'beats' = 'bars'
+  /** count in again each time the loop comes round */
+  countInLoops = false
   loop: Loop | null = null
   /** each staff's volume, 0–1; a staff not listed plays at 1 */
   volumes = new Map<number, number>()
@@ -79,13 +84,7 @@ export class Player {
     if (loop && (this.position < loop.start - 1e-3 || this.position >= loop.end - 1e-3)) this.position = loop.start
     this.from = this.position
     this.repeats = 0
-    this.countClicks = []
-    if (this.countIn) {
-      const pass = timeline.passes[passAt(timeline, this.from)]
-      const beats = pass?.beats ?? 4
-      const length = this.beatSecondsAt(this.from)
-      for (let i = beats; i >= 1; i--) this.countClicks.push({ beat: this.from - i * length, accent: i === beats })
-    }
+    this.countClicks = this.countIn ? this.countClicksBefore(this.from) : []
     const transport = this.engine.transport
     transport.setTempo(60)
     transport.setRate(this.speed)
@@ -138,7 +137,7 @@ export class Player {
     if (this.playing) {
       this.engine.transport.setRate(this.speed)
       this.engine.piano?.allNotesOff('score')
-      this.cue(this.engine.transport.beatAt())
+      this.cue(Math.max(this.from, this.engine.transport.beatAt()))
     }
     this.onChange()
   }
@@ -164,7 +163,7 @@ export class Player {
     // Muting or unmuting takes effect at once; a new level applies from the next note.
     if (this.playing && (before === 0) !== (this.volumeOf(staff) === 0)) {
       this.engine.piano?.allNotesOff('score')
-      this.cue(this.engine.transport.beatAt())
+      this.cue(Math.max(this.from, this.engine.transport.beatAt()))
     }
   }
 
@@ -182,12 +181,15 @@ export class Player {
     if (this.state === 'countIn' && beat >= this.from) { this.state = 'playing'; this.onChange() }
     const stopAt = this.loop?.end ?? this.end
     if (this.loop && beat >= this.loop.end) {
-      // Jump back to the loop start; anything still ringing past the loop end is cut.
+      // Jump back to the loop start (or to a count-in before it); anything still ringing past the loop end is cut.
       piano.allNotesOff('score')
-      transport.seek(this.loop.start + (beat - this.loop.end))
-      beat = transport.beatAt(now)
       this.from = this.loop.start
-      this.cue(beat)
+      this.countClicks = this.countIn && this.countInLoops ? this.countClicksBefore(this.from) : []
+      this.countCursor = 0
+      transport.seek((this.countClicks[0]?.beat ?? this.from) + (beat - this.loop.end))
+      beat = transport.beatAt(now)
+      if (this.countClicks.length) this.state = 'countIn'
+      this.cue(Math.max(beat, this.from))
       this.onLoop(++this.repeats)
       this.onChange()
     }
@@ -195,14 +197,16 @@ export class Player {
       const click = this.countClicks[this.countCursor]
       const at = transport.timeAtBeat(click.beat)!
       if (at > horizon) break
-      if (at >= now - 0.02) this.engine.click(Math.max(now, at), click.accent)
+      // After a loop's jump back the first click is a little late; it still sounds.
+      if (at >= now - 0.1) this.engine.click(Math.max(now, at), click.accent)
       this.countCursor++
     }
     const { sounds, clicks } = timeline
     while (this.soundCursor < sounds.length) {
       const sound = sounds[this.soundCursor]
       if (sound.time >= stopAt) break
-      const at = transport.timeAtBeat(sound.time)!
+      // A note already sounding where playback starts plays from there, not during a count-in.
+      const at = transport.timeAtBeat(Math.max(sound.time, this.from))!
       if (at > horizon) break
       this.soundCursor++
       const volume = this.volumeOf(sound.staff)
@@ -231,6 +235,16 @@ export class Player {
 
   dispose() { this.halt() }
 
+  /** the count-in clicks before `from`; a click a whole bar before it is accented */
+  private countClicksBefore(from: number) {
+    const timeline = this.timeline!
+    const perBar = timeline.passes[passAt(timeline, from)]?.beats ?? 4
+    const beats = Math.max(1, Math.round(this.countInUnit === 'bars' ? this.countInLength * perBar : this.countInLength))
+    const length = this.beatSecondsAt(from)
+    const clicks: { beat: number; accent: boolean }[] = []
+    for (let i = beats; i >= 1; i--) clicks.push({ beat: from - i * length, accent: i % perBar === 0 })
+    return clicks
+  }
   private beatSecondsAt(time: number) {
     const timeline = this.timeline
     const pass = timeline?.passes[passAt(timeline, time)]

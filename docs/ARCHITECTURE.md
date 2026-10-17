@@ -38,7 +38,7 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   start, previous bar, play, next bar, loop with a repeat count, sections (centre) — and speed,
   metronome, count-in and Settings (right).
 - **Settings** (`ui/Settings.tsx`, a popover over the dock): speed presets, Speed up loops,
-  transpose, note names, paper or night sheet, volume, room, and each hand's volume.
+  the count-in's length (1–4 bars or 1–8 beats) and Count in each loop, transpose, note names, paper or night sheet, volume, room, and each hand's volume.
 - **Hands (D-30)**: each staff has a volume 0–100 % (`Player.volumes`; 0 = muted), sent to
   the piano as `noteOn(…, level)`, which scales the note's gain. The hand chips in the dock
   mute and unmute (back to the hand's last volume) and show a volume below 100 %; the sliders
@@ -76,6 +76,13 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   frames are used only for drawing.
 - **Loops** jump back when the transport passes the loop end. The jump is checked every
   20 ms, so the first note after the loop point can be up to ~20 ms late.
+- **Count-in** (D-34): `countInLength` bars (the bar's counted beats each) or beats at the
+  beat length where playback starts; a click a whole number of bars before the start is
+  accented. The transport starts that many beats early and the state is `countIn` until it
+  reaches the start; `Player.time` stays at the start meanwhile. With `countInLoops` (and
+  count-in on), the loop's jump back goes to the count-in before the loop start instead, so
+  each time round is counted in. A note already sounding where playback starts is played from
+  the start, never during the count-in; re-cueing (speed, mute) never looks before it either.
 
 ## Timeline (`reader/timeline.ts`)
 
@@ -192,7 +199,7 @@ separately. The page pauses playback when it is hidden.
   file name, date) and `data` (the file's bytes; for a MuseScore file, the MusicXML it was
   converted to). If storage fails, the score still opens but is not kept.
 - `reader/prefs.ts`: localStorage `piano-trainer:prefs` (view, rows, theme, note names,
-  metronome, count-in, volume, room, Speed up loops with its step, start and target, keys
+  metronome, count-in with its length, unit and Count in each loop, volume, room, Speed up loops with its step, start and target, keys
   split, last score) and `piano-trainer:score:<id>` (speed,
   transposition, each staff's volume as `volumes`; an older `muted` list is read as volume 0;
   saved `sections` as `{ name, first, last }` pass indices, malformed ones dropped; `position`
@@ -235,7 +242,9 @@ Transport with a fake clock; pedal releases (and loops and a muted hand with the
 velocities from dynamics, fermata/rit./accel. times and ornament notes (timeline and what
 the player sends), hand volumes with the old-prefs migration, and the room setting. `practice.spec.ts` (the
 Ode fixture): saved sections across reloads; position and loop after a reload (also mid-play)
-and after opening another score; Speed up loops with a start, a 10 % step and a 120 % target.
+and after opening another score; Speed up loops with a start, a 10 % step and a 120 % target;
+the clicks of a 2-beat and a 2-bar count-in, and counting in each loop (no notes during it).
+The practice tests wrap `engine.click` and `piano.noteOn` to log what is sent.
 
 Not covered: how real MuseScore downloads look and sound, and how the audio feels. Those
 need Jason.

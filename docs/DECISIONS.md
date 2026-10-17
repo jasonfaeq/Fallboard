@@ -288,3 +288,11 @@ pausing in the middle of the ramp and playing on keeps the speed reached; making
 again starts the ramp again. A loop restored when a score reopens keeps the score's speed.
 Defaults are +5 % up to 100 % from the speed now, as in D-26. *Lists of fixed choices are
 quicker to set at the piano than free numbers.*
+
+**D-34 · 2026-10-17 · Count-in in bars or beats, and per loop** — The count-in is 1–4 bars or
+1–8 beats (default one bar, as before), counted at the beat where playback starts. Clicks a
+whole bar before the start are accented, so "2 beats" in 4/4 is two plain clicks and "2 bars"
+accents both bar starts. **Count in each loop** is a setting under count-in and needs the
+dock's Count-in on: when the loop comes round the music stops for the count-in, then plays the
+loop again. The jump is the usual loop jump, so the first click can be ~20 ms late. *One
+on/off chip stays in the dock for the common case; the length is set once in Settings.*

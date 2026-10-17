@@ -10,6 +10,11 @@ export interface Prefs {
   noteNames: boolean
   metronome: boolean
   countIn: boolean
+  /** the count-in's length in bars or beats */
+  countInLength: number
+  countInUnit: 'bars' | 'beats'
+  /** count in again each time a loop comes round */
+  countInLoops: boolean
   volume: number
   /** the room the piano plays in (reverb) */
   room: Room
@@ -33,7 +38,7 @@ export interface ScorePrefs {
 }
 
 export const ROW_CHOICES = [1, 2, 3, 4] as const
-const DEFAULTS: Prefs = { view: 'both', rows: 2, theme: 'paper', noteNames: false, metronome: false, countIn: true, volume: 0.8, room: 'off', speedUp: false, speedUpStep: 0.05, speedUpFrom: 0, speedUpTo: 1, split: 0.42, lastScore: '' }
+const DEFAULTS: Prefs = { view: 'both', rows: 2, theme: 'paper', noteNames: false, metronome: false, countIn: true, countInLength: 1, countInUnit: 'bars', countInLoops: false, volume: 0.8, room: 'off', speedUp: false, speedUpStep: 0.05, speedUpFrom: 0, speedUpTo: 1, split: 0.42, lastScore: '' }
 export const SCORE_DEFAULTS: ScorePrefs = { speed: 1, transpose: 0, volumes: {}, sections: [], position: 0, loop: null }
 
 function read<T extends object>(key: string, defaults: T): T {

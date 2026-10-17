@@ -60,6 +60,7 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
       the same place and loop; transposing keeps the loop — 2026-10-17.
 - [x] **Speed-up loop settings**: step 2/5/10 %, a start speed for each new loop, a target up
       to 200 %; the default is still +5 % up to 100 % — 2026-10-17 (D-33).
+- [x] **Count-in options**: 1–4 bars or 1–8 beats, and Count in each loop — 2026-10-17 (D-34).
 
 ## Later
 

@@ -21,6 +21,7 @@ interface Props {
 
 const SPEEDS = [0.5, 0.75, 1]
 const STEPS = [0.02, 0.05, 0.1]
+const COUNT_MAX = { bars: 4, beats: 8 }
 const percent = (from: number, to: number) => Array.from({ length: Math.round((to - from) / 5) + 1 }, (_, i) => (from + i * 5) / 100)
 const STARTS = percent(25, 150)
 const TARGETS = percent(50, 200)
@@ -85,6 +86,19 @@ export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose
         </select>
       </label>
     </div>}
+    <div className="setting">
+      <div><span>Count-in</span><small>When Count-in is on</small></div>
+      <div className="stepper">
+        <button aria-label="Shorter count-in" disabled={prefs.countInLength <= 1} onClick={() => onPrefs({ countInLength: prefs.countInLength - 1 })}>−</button>
+        <output data-testid="count-in-length">{prefs.countInLength}</output>
+        <button aria-label="Longer count-in" disabled={prefs.countInLength >= COUNT_MAX[prefs.countInUnit]} onClick={() => onPrefs({ countInLength: prefs.countInLength + 1 })}>+</button>
+      </div>
+      <div className="segmented small" role="group" aria-label="Count-in unit">
+        {(['bars', 'beats'] as const).map((unit) => <button key={unit} className={prefs.countInUnit === unit ? 'on' : ''} aria-pressed={prefs.countInUnit === unit}
+          onClick={() => onPrefs({ countInUnit: unit, countInLength: Math.min(prefs.countInLength, COUNT_MAX[unit]) })}>{unit === 'bars' ? 'Bars' : 'Beats'}</button>)}
+      </div>
+    </div>
+    {toggle('Count in each loop', prefs.countInLoops, () => onPrefs({ countInLoops: !prefs.countInLoops }), 'Count in again each time a loop comes round')}
     <div className="setting">
       <div><span>Transpose</span><small>Half steps, for this score</small></div>
       <div className="stepper">

@@ -29,6 +29,7 @@ const SHORTCUTS: [string, string][] = [
 ]
 const VIEWS: [View, string][] = [['sheet', 'Sheet'], ['keys', 'Keys'], ['both', 'Both']]
 const loopLabel = (first: number, last: number) => first === last ? `Loop bar ${first}` : `Loop bars ${first}–${last}`
+const countInText = ({ countInLength: n, countInUnit: unit }: Prefs) => `${n === 1 ? 'one' : n} ${n === 1 ? unit.slice(0, -1) : unit}`
 const barsLabel = (t: Timeline, first: number, last: number) => {
   const a = t.passes[first]?.number, b = t.passes[last]?.number
   return a === undefined || b === undefined ? '—' : a === b ? `Bar ${a}` : `Bars ${a}–${b}`
@@ -283,7 +284,13 @@ export default function App() {
     return () => { cancelAnimationFrame(frame); document.removeEventListener('visibilitychange', hidden); window.removeEventListener('pagehide', leaving) }
   }, [p])
   useEffect(() => () => { p.dispose(); engine.current!.dispose() }, [p])
-  useEffect(() => { p.metronome = prefs.metronome; p.countIn = prefs.countIn }, [p, prefs.metronome, prefs.countIn])
+  useEffect(() => {
+    p.metronome = prefs.metronome
+    p.countIn = prefs.countIn
+    p.countInLength = prefs.countInLength
+    p.countInUnit = prefs.countInUnit
+    p.countInLoops = prefs.countInLoops
+  }, [p, prefs.metronome, prefs.countIn, prefs.countInLength, prefs.countInUnit, prefs.countInLoops])
 
   useEffect(() => {
     window.__piano = { engine: engine.current!, player: p, timeline, osmd: osmd.current }
@@ -433,7 +440,7 @@ export default function App() {
           </label>
           <button className={`chip${prefs.metronome ? ' on' : ''}`} aria-pressed={prefs.metronome} onClick={() => updatePrefs({ metronome: !prefs.metronome })} title="Metronome (M)">
             <Icon name="metronome" size={16} />Metronome</button>
-          <button className={`chip${prefs.countIn ? ' on' : ''}`} aria-pressed={prefs.countIn} onClick={() => updatePrefs({ countIn: !prefs.countIn })} title="Count one bar in before playing">Count-in</button>
+          <button className={`chip${prefs.countIn ? ' on' : ''}`} aria-pressed={prefs.countIn} onClick={() => updatePrefs({ countIn: !prefs.countIn })} title={`Count ${countInText(prefs)} in before playing (the length is in Settings)`}>Count-in</button>
           <div className="settings-anchor">
             <button className={`icon-button${settingsOpen ? ' on' : ''}`} data-settings-toggle aria-expanded={settingsOpen} aria-label="Settings" title="Settings"
               onClick={() => setSettingsOpen((v) => !v)}><Icon name="settings" /></button>

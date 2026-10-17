@@ -19,6 +19,32 @@ async function importOde(page: Page) {
   await page.waitForFunction(() => window.__piano.timeline && window.__piano.timeline !== (window as unknown as { previous: unknown }).previous)
   await expect(page.getByRole('heading', { name: 'Ode to Joy (test)' })).toBeVisible()
 }
+/** Log every metronome click and every note the player sends, in score seconds. */
+async function listen(page: Page) {
+  await page.evaluate(async () => {
+    const { engine } = window.__piano
+    await engine.start()
+    const log = { clicks: [] as { beat: number; accent: boolean }[], notes: [] as { beat: number; midi: number }[] }
+    ;(window as unknown as { heard: typeof log }).heard = log
+    const click = engine.click.bind(engine)
+    engine.click = (time, accent) => { log.clicks.push({ beat: engine.transport.beatAt(time), accent }); click(time, accent) }
+    const piano = engine.piano!
+    const noteOn = piano.noteOn.bind(piano)
+    piano.noteOn = (...args: Parameters<typeof noteOn>) => {
+      if (args[2] === 'score') log.notes.push({ beat: engine.transport.beatAt(args[3]), midi: args[0] })
+      noteOn(...args)
+    }
+  })
+}
+type Heard = { clicks: { beat: number; accent: boolean }[]; notes: { beat: number; midi: number }[] }
+const heard = (page: Page) => page.evaluate(() => {
+  const log = (window as unknown as { heard: Heard }).heard
+  const round = (n: number) => Math.round(n * 1000) / 1000
+  const taken = { clicks: log.clicks.map((c) => ({ ...c, beat: round(c.beat) })), notes: log.notes.map((n) => ({ ...n, beat: round(n.beat) })) }
+  log.clicks.length = 0
+  log.notes.length = 0
+  return taken
+})
 const time = (page: Page) => page.evaluate(() => window.__piano.player.time)
 const loopOf = (page: Page) => page.evaluate(() => window.__piano.player.loop)
 
@@ -156,4 +182,61 @@ test('practice: Speed up loops can start at a set speed and step past 100 % to a
   await expect(page.getByRole('group', { name: 'Speed-up step' }).getByRole('button', { name: '10%' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByLabel('Start speed')).toHaveValue('1')
   await expect(page.getByLabel('Target speed')).toHaveValue('1.2')
+})
+
+test('practice: the count-in lasts bars or beats, and can count in again each time a loop comes round', async ({ page }) => {
+  await open(page)
+  await importOde(page)
+  await listen(page)
+  await page.getByLabel('Speed', { exact: true }).fill('200')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('group', { name: 'Count-in unit' }).getByRole('button', { name: 'Beats' }).click()
+  await page.getByRole('button', { name: 'Longer count-in' }).click()
+  await expect(page.getByTestId('count-in-length')).toHaveText('2')
+  await page.keyboard.press('Escape')
+
+  // Two beats (a beat is half a score second).
+  await page.keyboard.press(' ')
+  await expect.poll(() => page.evaluate(() => window.__piano.player.state)).toBe('playing')
+  await page.keyboard.press(' ')
+  expect((await heard(page)).clicks).toEqual([{ beat: -1, accent: false }, { beat: -0.5, accent: false }])
+
+  // Two bars, the first beat of each accented.
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('group', { name: 'Count-in unit' }).getByRole('button', { name: 'Bars' }).click()
+  await expect(page.getByTestId('count-in-length')).toHaveText('2')
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Home')
+  await page.keyboard.press(' ')
+  await expect.poll(() => page.evaluate(() => window.__piano.player.state), { timeout: 6000 }).toBe('playing')
+  await page.keyboard.press(' ')
+  const twoBars = (await heard(page)).clicks
+  expect(twoBars.map((c) => c.beat)).toEqual([-4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5])
+  expect(twoBars.filter((c) => c.accent).map((c) => c.beat)).toEqual([-4, -2])
+
+  // Counting in each loop: one beat before bar 2 every time round, and no notes during it.
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('group', { name: 'Count-in unit' }).getByRole('button', { name: 'Beats' }).click()
+  await page.getByRole('button', { name: 'Shorter count-in' }).click()
+  await page.getByRole('switch', { name: 'Count in each loop' }).click()
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Home')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('l')
+  await page.keyboard.press(' ')
+  const states = new Set<string>()
+  const seen: number[] = []
+  while (await page.evaluate(() => window.__piano.player.repeats) < 2) {
+    states.add(await page.evaluate(() => window.__piano.player.state + ':' + window.__piano.player.repeats))
+    seen.push(await time(page))
+    await page.waitForTimeout(40)
+  }
+  await page.keyboard.press(' ')
+  expect(states).toContain('countIn:1') // counting in again after the first time round
+  expect(Math.min(...seen)).toBeGreaterThanOrEqual(2 - 1e-6) // the playhead waits at the loop start
+  const looped = await heard(page)
+  // (after a jump back a click can be a few milliseconds late)
+  expect(looped.clicks.filter((c) => c.beat >= 1.5 - 1e-3 && c.beat < 1.6).length, JSON.stringify(looped.clicks)).toBeGreaterThanOrEqual(3)
+  expect(looped.notes.length).toBeGreaterThan(0)
+  expect(looped.notes.every((n) => n.beat >= 2 - 1e-3 && n.beat < 4)).toBe(true)
 })
