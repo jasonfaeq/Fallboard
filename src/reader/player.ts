@@ -17,7 +17,10 @@ export class Player {
   metronome = false
   countIn = false
   loop: Loop | null = null
-  muted = new Set<number>()
+  /** each staff's volume, 0–1; a staff not listed plays at 1 */
+  volumes = new Map<number, number>()
+  /** the staves at volume 0 */
+  muted: ReadonlySet<number> = new Set()
   error = ''
   onChange: () => void = () => {}
   /** the loop came round again; `repeats` counts the times since the loop was set or play began */
@@ -148,14 +151,21 @@ export class Player {
     }
     this.onChange()
   }
-  setMuted(staff: number, muted: boolean) {
-    if (muted) this.muted.add(staff)
-    else this.muted.delete(staff)
-    if (this.playing) {
+  volumeOf(staff: number) { return this.volumes.get(staff) ?? 1 }
+  /** Set the staves' volumes at once, as remembered for a score. */
+  setVolumes(volumes: Record<number, number>) {
+    this.volumes = new Map(Object.entries(volumes).map(([staff, v]) => [Number(staff), Math.max(0, Math.min(1, v))]))
+    this.muted = new Set([...this.volumes].filter(([, v]) => v === 0).map(([staff]) => staff))
+    this.onChange()
+  }
+  setVolume(staff: number, volume: number) {
+    const before = this.volumeOf(staff)
+    this.setVolumes({ ...Object.fromEntries(this.volumes), [staff]: Math.round(volume * 100) / 100 })
+    // Muting or unmuting takes effect at once; a new level applies from the next note.
+    if (this.playing && (before === 0) !== (this.volumeOf(staff) === 0)) {
       this.engine.piano?.allNotesOff('score')
       this.cue(this.engine.transport.beatAt())
     }
-    this.onChange()
   }
 
   /** Sound the notes and clicks due in the next few milliseconds. */
@@ -195,11 +205,12 @@ export class Player {
       const at = transport.timeAtBeat(sound.time)!
       if (at > horizon) break
       this.soundCursor++
-      if (this.muted.has(sound.staff)) continue
+      const volume = this.volumeOf(sound.staff)
+      if (volume <= 0) continue
       // The damper falls at the release: later than the end while the pedal is down.
       const off = transport.timeAtBeat(Math.min(sound.release, stopAt))!
       if (off <= now) continue
-      piano.noteOn(sound.midi, sound.velocity, 'score', Math.max(now, at))
+      piano.noteOn(sound.midi, sound.velocity, 'score', Math.max(now, at), volume)
       piano.noteOff(sound.midi, 'score', off)
     }
     while (this.clickCursor < clicks.length) {

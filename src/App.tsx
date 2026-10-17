@@ -42,7 +42,7 @@ export default function App() {
   const [imported, setImported] = useState<ScoreEntry[]>([])
   const [entry, setEntry] = useState<ScoreEntry | null>(null)
   const [source, setSource] = useState<{ key: string; data: ScoreSource } | null>(null)
-  const [scorePrefs, setScorePrefs] = useState<ScorePrefs>({ speed: 1, transpose: 0, muted: [] })
+  const [scorePrefs, setScorePrefs] = useState<ScorePrefs>({ speed: 1, transpose: 0, volumes: {} })
   const [timeline, setTimeline] = useState<Timeline | null>(null)
   const [loop, setLoopPasses] = useState<[number, number] | null>(null)
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null)
@@ -69,7 +69,7 @@ export default function App() {
     const saved = loadScorePrefs(next.id)
     setScorePrefs(saved)
     p.speed = saved.speed
-    p.muted = new Set(saved.muted)
+    p.setVolumes(saved.volumes)
     setEntry(next)
     setTimeline(null)
     setLoopPasses(null)
@@ -183,10 +183,16 @@ export default function App() {
     const box = stage.current!.getBoundingClientRect()
     updatePrefs({ split: Math.max(0.2, Math.min(0.75, (box.bottom - e.clientY) / box.height)) })
   }
+  const setHandVolume = (staff: number, volume: number) => {
+    p.setVolume(staff, volume)
+    updateScorePrefs({ volumes: Object.fromEntries(p.volumes) })
+  }
+  // The hand chips mute, and unmute back to the volume the hand had.
+  const unmuted = useRef(new Map<number, number>())
   const toggleMute = (staff: number) => {
-    const muted = !p.muted.has(staff)
-    p.setMuted(staff, muted)
-    updateScorePrefs({ muted: [...p.muted] })
+    const volume = p.volumeOf(staff)
+    if (volume > 0) unmuted.current.set(staff, volume)
+    setHandVolume(staff, volume > 0 ? 0 : unmuted.current.get(staff) ?? 1)
   }
 
   const held = useRef(new Set<number>())
@@ -324,9 +330,12 @@ export default function App() {
             <span>{lastBar ? `of ${lastBar}` : ''}{pass ? ` · ${Math.round(pass.bpm * p.speed)} BPM` : ''}</span>
           </div>
           {timeline && timeline.staves.length > 1 && <div className="hands" role="group" aria-label="Staves to hear">
-            {timeline.staves.map((s) => <button key={s.index} className={`hand staff-${Math.min(s.index, 2)}${muted.has(s.index) ? ' muted' : ' on'}`}
-              aria-pressed={!muted.has(s.index)} title={muted.has(s.index) ? 'Muted: click to hear it' : 'Click to mute'}
-              onClick={() => toggleMute(s.index)}><i aria-hidden="true" />{s.name}</button>)}
+            {timeline.staves.map((s) => {
+              const volume = Math.round(p.volumeOf(s.index) * 100)
+              return <button key={s.index} className={`hand staff-${Math.min(s.index, 2)}${muted.has(s.index) ? ' muted' : ' on'}`}
+                aria-pressed={!muted.has(s.index)} title={muted.has(s.index) ? 'Muted: click to hear it' : 'Click to mute (the volume is in Settings)'}
+                onClick={() => toggleMute(s.index)}><i aria-hidden="true" />{s.name}{volume > 0 && volume < 100 && <small aria-hidden="true">{volume}%</small>}</button>
+            })}
           </div>}
         </div>
 
@@ -359,6 +368,7 @@ export default function App() {
             <button className={`icon-button${settingsOpen ? ' on' : ''}`} data-settings-toggle aria-expanded={settingsOpen} aria-label="Settings" title="Settings"
               onClick={() => setSettingsOpen((v) => !v)}><Icon name="settings" /></button>
             {settingsOpen && <Settings prefs={prefs} transpose={scorePrefs.transpose} speed={p.speed} onPrefs={updatePrefs} onClose={closeSettings}
+              staves={timeline && timeline.staves.length > 1 ? timeline.staves : []} handVolume={(staff) => p.volumeOf(staff)} onHandVolume={setHandVolume}
               onTranspose={(transpose) => updateScorePrefs({ transpose })} onSpeed={setSpeed}
               onVolume={(v) => { engine.current!.volume = v; updatePrefs({ volume: v }) }} />}
           </div>

@@ -27,7 +27,7 @@ never in a way that makes a commercial version hard.
   While playing, the current line stays at the top (D-22).
 - **Playback** on a sampled grand piano: a playhead, notes that light up in their hand's
   colour, repeats followed, speed 25–200 %, count-in, metronome, loops (optionally speeding
-  up each time round, D-26), one hand muted,
+  up each time round, D-26), each hand's volume (one hand quiet or muted, D-30),
   transposition, volume.
 
 ## Pillars

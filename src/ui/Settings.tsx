@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Prefs } from '../reader/prefs'
+import type { StaffInfo } from '../reader/timeline'
 
 interface Props {
   prefs: Prefs
@@ -9,13 +10,17 @@ interface Props {
   onTranspose: (transpose: number) => void
   onSpeed: (speed: number) => void
   onVolume: (volume: number) => void
+  /** the staves with their own volume (none for a one-staff score) */
+  staves: StaffInfo[]
+  handVolume: (staff: number) => number
+  onHandVolume: (staff: number, volume: number) => void
   onClose: () => void
 }
 
 const SPEEDS = [0.5, 0.75, 1]
 
 /** The settings that are changed now and then: pitch, labels, sheet colours, practice helpers, volume. */
-export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose, onSpeed, onVolume, onClose }: Props) {
+export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose, onSpeed, onVolume, staves, handVolume, onHandVolume, onClose }: Props) {
   const panel = useRef<HTMLDivElement>(null)
   // Close on a click anywhere else; the button that opened it toggles it itself.
   useEffect(() => {
@@ -26,6 +31,15 @@ export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose
     window.addEventListener('pointerdown', away)
     return () => window.removeEventListener('pointerdown', away)
   }, [onClose])
+
+  const slider = (label: string, value: number, change: (value: number) => void, className = '') =>
+    <label className={`setting volume ${className}`} key={label}>
+      <span>{label}</span>
+      <input type="range" min={0} max={100} value={Math.round(value * 100)} aria-label={`${label} volume`}
+        style={{ '--fill': `${value * 100}%` } as React.CSSProperties}
+        onChange={(e) => change(Number(e.target.value) / 100)} />
+      <output>{Math.round(value * 100)}%</output>
+    </label>
 
   const toggle = (label: string, on: boolean, change: () => void, hint?: string) =>
     <div className="setting">
@@ -66,5 +80,6 @@ export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose
         style={{ '--fill': `${prefs.volume * 100}%` } as React.CSSProperties}
         onChange={(e) => onVolume(Number(e.target.value) / 100)} />
     </label>
+    {staves.map((s) => slider(s.name, handVolume(s.index), (v) => onHandVolume(s.index, v), `hand-volume staff-${Math.min(s.index, 2)}`))}
   </div>
 }

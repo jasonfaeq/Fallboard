@@ -43,7 +43,8 @@ export class Piano {
     return this.loading
   }
 
-  noteOn(note: number, velocity: number, channel: Channel, when = this.context.currentTime) {
+  /** `level` (0–1) scales the loudness on top of the velocity: a hand's volume. */
+  noteOn(note: number, velocity: number, channel: Channel, when = this.context.currentTime, level = 1) {
     if (!this.ready || !Number.isInteger(note) || note < PIANO_LOW || note > PIANO_HIGH || velocity <= 0) return
     const key = `${channel}:${note}`
     const previous = this.held.get(key)
@@ -55,7 +56,7 @@ export class Piano {
     source.buffer = this.samples.get(pitch)!
     source.playbackRate.value = 2 ** ((note - pitch) / 12)
     const gain = this.context.createGain()
-    gain.gain.value = 0.65 * (Math.min(velocity, MAX_VELOCITY) / MAX_VELOCITY) ** 1.5
+    gain.gain.value = 0.65 * (Math.min(velocity, MAX_VELOCITY) / MAX_VELOCITY) ** 1.5 * Math.max(0, Math.min(1, level))
     source.connect(gain).connect(this.output)
     const voice = { source, gain, channel, note, released: false }
     this.voices.add(voice)

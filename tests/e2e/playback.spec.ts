@@ -178,3 +178,47 @@ test('playback: a MuseScore 4 rit. line slows the last bar', async ({ page }) =>
   expect(end - time).toBeCloseTo(2 * Math.log(1 / 0.7) / 0.3, 3) // ♩ = 120 slowing to 84
   expect(errors).toEqual([])
 })
+
+test('playback: each hand has a volume; the hand buttons still mute, and it is remembered', async ({ page }) => {
+  const errors = await open(page, 'ode-repeat.musicxml', 'Ode to Joy (test)')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const left = page.getByLabel('Left hand volume')
+  await expect(left).toHaveValue('100')
+  await left.fill('30')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Left hand', exact: true })).toContainText('30%')
+
+  await record(page)
+  await playUntil(page, 2.2)
+  const levels = (notes: Sent[]) => [...new Set(notes.map((n) => `${n.midi < 60 ? 'left' : 'right'} ${n.level}`))].sort()
+  expect(levels(await sent(page))).toEqual(['left 0.3', 'right 1'])
+
+  // The chip mutes the hand and brings it back at 30 %.
+  const chip = page.getByRole('button', { name: 'Left hand', exact: true })
+  await chip.click()
+  await expect(chip).toHaveAttribute('aria-pressed', 'false')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await expect(left).toHaveValue('0')
+  await page.keyboard.press('Escape')
+  await page.evaluate(() => { (window as unknown as { sent: Sent[] }).sent.length = 0 })
+  await page.keyboard.press('Home')
+  await playUntil(page, 2.2)
+  expect(levels(await sent(page))).toEqual(['right 1'])
+  await chip.click()
+  await expect(chip).toHaveAttribute('aria-pressed', 'true')
+  await expect(chip).toContainText('30%')
+
+  await page.reload()
+  await page.waitForFunction(() => window.__piano?.timeline?.sounds.length === 30)
+  expect(await page.evaluate(() => window.__piano.player.volumeOf(1))).toBe(0.3)
+  expect(errors).toEqual([])
+})
+
+test('playback: a hand muted before hand volumes existed stays muted', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => localStorage.setItem('piano-trainer:score:builtin:chopin-op28-4', JSON.stringify({ speed: 1, transpose: 0, muted: [1] })))
+  await page.reload()
+  await page.waitForFunction(() => !!window.__piano?.timeline)
+  await expect(page.getByRole('button', { name: 'Left hand', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  expect(await page.evaluate(() => [window.__piano.player.volumeOf(0), window.__piano.player.volumeOf(1)])).toEqual([1, 0])
+})

@@ -128,7 +128,7 @@ src/engine/audio.ts      Engine: AudioContext, volume, limiter, click(); Transpo
 src/engine/piano.ts      the sampled Salamander piano (channels 'score' and 'touch')
 src/engine/notes.ts      MIDI note numbers, names, piano range, OSMD half-tone conversion
 src/reader/timeline.ts   OSMD MusicSheet → Timeline: sounds, marks, passes, steps, clicks, staves
-src/reader/player.ts     plays a Timeline: play/pause/seek, speed, loop, count-in, metronome, mutes
+src/reader/player.ts     plays a Timeline: play/pause/seek, speed, loop, count-in, metronome, hand volumes
 src/reader/library.ts    built-in scores, imported files in IndexedDB, file-type checks
 src/reader/mscz.ts       MuseScore .mscz/.mscx → MusicXML (our own reader; unzip, convert)
 src/reader/prefs.ts      remembered settings (localStorage)
@@ -137,7 +137,7 @@ src/ui/SheetView.tsx     OSMD rendering, rows fit, playhead, lit notes, click-to
 src/ui/KeysView.tsx      falling notes (canvas) + Keyboard.tsx
 src/ui/Library.tsx       the Scores drawer: import, open, delete
 src/ui/Scrubber.tsx      position bar with bar ticks and the loop
-src/ui/Settings.tsx      the settings popover: speed presets, speed up loops, transpose, display, volume
+src/ui/Settings.tsx      the settings popover: speed presets, speed up loops, transpose, display, volumes
 src/ui/Icons.tsx         our own line icons
 src/App.tsx              screen layout (top bar, stage, dock), shortcuts, drag-and-drop, rAF redraw
 parked/midi-trainer/     the parked MIDI trainer (not compiled, not tested)

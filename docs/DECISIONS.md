@@ -251,3 +251,11 @@ speed and hold the last. Neighbour notes follow the key signature or the ornamen
 accidental (not earlier accidentals in the bar). Times are score seconds, so ornaments slow
 down with the speed slider. *Plain rules that are easy to hear and change; every number is a
 guess for Jason to judge.*
+
+**D-30 · 2026-10-17 · A volume per hand instead of a mute** — Jason asked to hear the other
+hand quietly rather than not at all. Each staff has a volume 0–100 % (0 = muted), remembered
+per score as `volumes` (an old `muted` list is read as 0). The hand chips in the dock stay a
+one-click mute and unmute back to the hand's last volume, and show the volume when it is
+below 100 %; the sliders live in Settings, where there is room. The volume scales the
+note's gain linearly on top of its velocity, so the dynamics are kept. *A slider per hand in
+the dock would crowd it; the chips cover the common case.*

@@ -38,7 +38,12 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   start, previous bar, play, next bar, loop with a repeat count (centre) — and speed,
   metronome, count-in and Settings (right).
 - **Settings** (`ui/Settings.tsx`, a popover over the dock): speed presets, Speed up loops,
-  transpose, note names, paper or night sheet, volume.
+  transpose, note names, paper or night sheet, volume, and each hand's volume.
+- **Hands (D-30)**: each staff has a volume 0–100 % (`Player.volumes`; 0 = muted), sent to
+  the piano as `noteOn(…, level)`, which scales the note's gain. The hand chips in the dock
+  mute and unmute (back to the hand's last volume) and show a volume below 100 %; the sliders
+  are in Settings. Muting or unmuting while playing re-cues at once; a new level applies from
+  the next note.
 - **Speed up loops**: the player calls `onLoop(repeats)` each time a loop comes round; with
   the setting on, the app adds 5 % to the speed until 100 % (it never slows a faster speed).
 - Icons are our own line drawings in `ui/Icons.tsx`; colours and controls are CSS variables
@@ -54,7 +59,7 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
 - **Scheduling:** `Player.update()` runs every 20 ms but only wakes the scheduler. Notes and
   clicks due within the next 120 ms are scheduled at their exact audio-clock time. A note's
   note-off is sent for its `release` (the pedal), cut at the loop end. On a seek,
-  a speed change or a mute, sounding notes stop and the cursor is pointed at the new
+  a speed change or muting/unmuting a hand, sounding notes stop and the cursor is pointed at the new
   position; notes that should still sound there start again.
 - **What you see:** `Player.time` is the transport position minus the browser's reported
   output latency, so the playhead matches what is heard. `performance.now()` and animation
@@ -172,7 +177,8 @@ separately. The page pauses playback when it is hidden.
   converted to). If storage fails, the score still opens but is not kept.
 - `reader/prefs.ts`: localStorage `piano-trainer:prefs` (view, rows, theme, note names,
   metronome, count-in, volume, Speed up loops, keys split, last score) and `piano-trainer:score:<id>` (speed,
-  transposition, muted staves). Every access is wrapped in try/catch.
+  transposition, each staff's volume as `volumes`; an older `muted` list is read as volume 0).
+  Every access is wrapped in try/catch.
 
 ## Build & run
 
