@@ -50,12 +50,17 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   section is its first and last pass, so a repeated bar is told apart. The loop button shows
   the section's name while its loop is set; `[` and `]` loop the previous or next section
   (without one set, the first after or the last before the playhead).
+- **Go to bar** (`ui/GoToBar.tsx`): G, or clicking the position in the dock, opens a box
+  for a printed bar number. It seeks to the first pass with that number (with repeats, the
+  first time it is played; 0 is a pickup) and ends a loop it lands outside; a number the
+  score does not have gets a message with the range and the box stays open.
 - **Speed up loops** (D-33): the player calls `onLoop(repeats)` each time a loop comes round;
   with the setting on, the app adds the step (2, 5 or 10 %, default 5) until the target
   (50–200 %, default 100; it never slows a faster speed). With a start speed set (25–150 %;
   default "the speed now"), a loop the player makes (L, Shift+click, a section) first sets
   the speed to it; a loop restored with the score does not. Settings shows step, start and
   target under the switch while it is on.
+- Popovers (settings, sections, go to bar) close on a press elsewhere (`ui/clickAway.ts`).
 - Icons are our own line drawings in `ui/Icons.tsx`; colours and controls are CSS variables
   and classes in `styles.css`.
 
@@ -243,7 +248,8 @@ velocities from dynamics, fermata/rit./accel. times and ornament notes (timeline
 the player sends), hand volumes with the old-prefs migration, and the room setting. `practice.spec.ts` (the
 Ode fixture): saved sections across reloads; position and loop after a reload (also mid-play)
 and after opening another score; Speed up loops with a start, a 10 % step and a 120 % target;
-the clicks of a 2-beat and a 2-bar count-in, and counting in each loop (no notes during it).
+the clicks of a 2-beat and a 2-bar count-in, and counting in each loop (no notes during it);
+go to bar with a repeated bar, a missing bar and a loop.
 The practice tests wrap `engine.click` and `piano.noteOn` to log what is sent.
 
 Not covered: how real MuseScore downloads look and sound, and how the audio feels. Those

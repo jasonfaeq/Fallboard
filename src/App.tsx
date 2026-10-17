@@ -13,6 +13,7 @@ import Library from './ui/Library'
 import Scrubber, { clock } from './ui/Scrubber'
 import Settings from './ui/Settings'
 import Sections from './ui/Sections'
+import GoToBar from './ui/GoToBar'
 import Icon from './ui/Icons'
 
 declare global {
@@ -23,7 +24,7 @@ declare global {
 }
 
 const SHORTCUTS: [string, string][] = [
-  ['Space', 'Play / pause'], ['Home', 'Back to the start'], ['← →', 'Previous / next bar'], ['↑ ↓', 'Faster / slower'],
+  ['Space', 'Play / pause'], ['Home', 'Back to the start'], ['← →', 'Previous / next bar'], ['G', 'Go to a bar number'], ['↑ ↓', 'Faster / slower'],
   ['L', 'Loop this bar (Shift+click a bar to stretch the loop)'], ['[ · ]', 'Loop the previous / next saved section'], ['M', 'Metronome'], ['1 – 4', 'Rows of music'],
   ['S · K · B', 'Sheet · Keys · Both'], ['N', 'Note names'], ['F', 'Full screen'], ['O', 'Scores'], ['?', 'This list'],
 ]
@@ -56,6 +57,7 @@ export default function App() {
   const [help, setHelp] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [sectionsOpen, setSectionsOpen] = useState(false)
+  const [goToOpen, setGoToOpen] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const [dropping, setDropping] = useState(false)
   const [pressed, setPressed] = useState<ReadonlySet<number>>(new Set())
@@ -183,6 +185,17 @@ export default function App() {
     anchor.current = i
     p.seek(timeline.passes[i].time)
   }
+  // Go to a printed bar number: the first time it is played, if a repeat plays it more than once.
+  const goToBar = (bar: number) => {
+    if (!timeline) return false
+    const i = timeline.passes.findIndex((x) => x.number === bar)
+    if (i < 0) return false
+    anchor.current = i
+    if (loop && (i < loop[0] || i > loop[1])) setLoop(null)
+    p.seek(timeline.passes[i].time)
+    return true
+  }
+  const closeGoTo = useCallback(() => setGoToOpen(false), [])
   const loopHere = () => {
     if (loop) { setLoop(null); return }
     if (!timeline) return
@@ -310,8 +323,8 @@ export default function App() {
       ArrowUp: () => setSpeed(p.speed + 0.05), ArrowDown: () => setSpeed(p.speed - 0.05),
       l: loopHere, '[': () => stepSection(-1), ']': () => stepSection(1), m: () => updatePrefs({ metronome: !prefs.metronome }), n: () => updatePrefs({ noteNames: !prefs.noteNames }),
       s: () => updatePrefs({ view: 'sheet' }), k: () => updatePrefs({ view: 'keys' }), b: () => updatePrefs({ view: 'both' }),
-      f: toggleFullscreen, o: () => setLibraryOpen((v) => !v), '?': () => setHelp((v) => !v),
-      Escape: () => { setHelp(false); setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false) },
+      g: () => { if (timeline) setGoToOpen(true) }, f: toggleFullscreen, o: () => setLibraryOpen((v) => !v), '?': () => setHelp((v) => !v),
+      Escape: () => { setHelp(false); setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false); setGoToOpen(false) },
       '1': () => updatePrefs({ rows: 1 }), '2': () => updatePrefs({ rows: 2 }), '3': () => updatePrefs({ rows: 3 }), '4': () => updatePrefs({ rows: 4 }),
     }
     const action = actions[key.length === 1 ? key.toLowerCase() : key]
@@ -331,6 +344,7 @@ export default function App() {
   const time = p.time
   const pass = timeline?.passes[passAt(timeline, time)]
   const lastBar = timeline?.passes.reduce((max, x) => Math.max(max, x.number), 0) ?? 0
+  const firstBar = timeline?.passes.reduce((min, x) => Math.min(min, x.number), Infinity) ?? 1
   const loopTimes = loop && timeline ? { start: timeline.passes[loop[0]].time, end: timeline.passes[loop[1]].end } : null
   const status = p.error || (engine.current.status === 'loading' ? 'Loading the piano…' :
     p.state === 'countIn' ? `Count-in · ${p.countRemaining}` : '')
@@ -393,9 +407,13 @@ export default function App() {
       <Scrubber timeline={timeline} time={time} loop={loopTimes} onSeek={(t) => { if (loopTimes && (t < loopTimes.start || t >= loopTimes.end)) setLoop(null); p.seek(t) }} />
       <div className="dock-row">
         <div className="dock-start">
-          <div className="position" data-testid="position">
-            <strong>{pass ? (pass.number === 0 ? 'Pickup' : `Bar ${pass.number}`) : '—'}</strong>
-            <span>{lastBar ? `of ${lastBar}` : ''}{pass ? ` · ${Math.round(pass.bpm * p.speed)} BPM` : ''}</span>
+          <div className="settings-anchor">
+            <button className="position" data-testid="position" data-go-to-toggle disabled={!timeline} title="Go to bar (G)"
+              aria-expanded={goToOpen} onClick={() => setGoToOpen((v) => !v)}>
+              <strong>{pass ? (pass.number === 0 ? 'Pickup' : `Bar ${pass.number}`) : '—'}</strong>
+              <span>{lastBar ? `of ${lastBar}` : ''}{pass ? ` · ${Math.round(pass.bpm * p.speed)} BPM` : ''}</span>
+            </button>
+            {goToOpen && timeline && <GoToBar first={firstBar} last={lastBar} onGo={goToBar} onClose={closeGoTo} />}
           </div>
           {timeline && timeline.staves.length > 1 && <div className="hands" role="group" aria-label="Staves to hear">
             {timeline.staves.map((s) => {

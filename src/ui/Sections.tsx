@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Section } from '../reader/prefs'
 import Icon from './Icons'
+import { useClickAway } from './clickAway'
 
 interface Props {
   sections: Section[]
@@ -21,14 +22,7 @@ interface Props {
 export default function Sections({ sections, label, loop, active, onSave, onPick, onRename, onDelete, onClose }: Props) {
   const panel = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState(-1)
-  useEffect(() => {
-    const away = (e: PointerEvent) => {
-      const target = e.target as Element
-      if (!panel.current?.contains(target) && !target.closest('[data-sections-toggle]')) onClose()
-    }
-    window.addEventListener('pointerdown', away)
-    return () => window.removeEventListener('pointerdown', away)
-  }, [onClose])
+  useClickAway(panel, 'data-sections-toggle', onClose)
 
   const finish = (index: number, name: string) => {
     if (name.trim()) onRename(index, name.trim())

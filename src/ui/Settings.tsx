@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { ROOMS, type Room } from '../engine/audio'
 import type { Prefs } from '../reader/prefs'
 import type { StaffInfo } from '../reader/timeline'
+import { useClickAway } from './clickAway'
 
 interface Props {
   prefs: Prefs
@@ -29,15 +30,7 @@ const TARGETS = percent(50, 200)
 /** The settings that are changed now and then: pitch, labels, sheet colours, practice helpers, volume. */
 export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose, onSpeed, onVolume, onRoom, staves, handVolume, onHandVolume, onClose }: Props) {
   const panel = useRef<HTMLDivElement>(null)
-  // Close on a click anywhere else; the button that opened it toggles it itself.
-  useEffect(() => {
-    const away = (e: PointerEvent) => {
-      const target = e.target as Element
-      if (!panel.current?.contains(target) && !target.closest('[data-settings-toggle]')) onClose()
-    }
-    window.addEventListener('pointerdown', away)
-    return () => window.removeEventListener('pointerdown', away)
-  }, [onClose])
+  useClickAway(panel, 'data-settings-toggle', onClose)
 
   const slider = (label: string, name: string, value: number, change: (value: number) => void, className = '') =>
     <label className={`setting volume ${className}`} key={label}>

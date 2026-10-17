@@ -296,3 +296,10 @@ accents both bar starts. **Count in each loop** is a setting under count-in and 
 dock's Count-in on: when the loop comes round the music stops for the count-in, then plays the
 loop again. The jump is the usual loop jump, so the first click can be ~20 ms late. *One
 on/off chip stays in the dock for the common case; the length is set once in Settings.*
+
+**D-35 · 2026-10-17 · Go to bar goes to the first time a bar is played** — A printed bar
+number can be played more than once (repeats, D.C.). Go to bar picks the first pass with that
+number, not the one nearest the playhead: it is predictable, matches reading the score from
+the top, and the next-bar button or a click on the music reaches a later time through. *The
+"nearest" rule would make the same number land in different places depending on where you
+were.*

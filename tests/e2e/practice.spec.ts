@@ -240,3 +240,38 @@ test('practice: the count-in lasts bars or beats, and can count in again each ti
   expect(looped.notes.length).toBeGreaterThan(0)
   expect(looped.notes.every((n) => n.beat >= 2 - 1e-3 && n.beat < 4)).toBe(true)
 })
+
+test('practice: go to a printed bar number, the first time a repeat plays it', async ({ page }) => {
+  const errors = await open(page)
+  await importOde(page)
+  await page.keyboard.press('g')
+  await page.getByLabel('Bar number').fill('4')
+  await page.getByLabel('Bar number').press('Enter')
+  await expect(page.getByRole('dialog', { name: 'Go to bar' })).toHaveCount(0)
+  await expect(page.getByTestId('position')).toContainText('Bar 4')
+  expect(await time(page)).toBeCloseTo(10, 3) // bars 1 2 3 1 2 come first
+
+  // Bar 2 is played twice; it goes to the first time (2 s), not the nearer second (8 s).
+  await page.getByTestId('position').click()
+  await page.getByLabel('Bar number').fill('2')
+  await page.getByRole('button', { name: 'Go', exact: true }).click()
+  expect(await time(page)).toBeCloseTo(2, 3)
+
+  // A bar that is not there says so and stays open; Escape closes it.
+  await page.keyboard.press('g')
+  await page.getByLabel('Bar number').fill('9')
+  await page.getByLabel('Bar number').press('Enter')
+  await expect(page.getByRole('alert')).toHaveText('There is no bar 9. Bars go from 1 to 4.')
+  await page.getByLabel('Bar number').press('Escape')
+  await expect(page.getByRole('dialog', { name: 'Go to bar' })).toHaveCount(0)
+  expect(await time(page)).toBeCloseTo(2, 3)
+
+  // Going outside the loop ends it.
+  await page.keyboard.press('l')
+  await page.keyboard.press('g')
+  await page.getByLabel('Bar number').fill('3')
+  await page.getByLabel('Bar number').press('Enter')
+  expect(await loopOf(page)).toBeNull()
+  expect(await time(page)).toBeCloseTo(4, 3)
+  expect(errors).toEqual([])
+})
