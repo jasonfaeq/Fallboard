@@ -196,7 +196,8 @@ export class Player {
       if (at > horizon) break
       this.soundCursor++
       if (this.muted.has(sound.staff)) continue
-      const off = transport.timeAtBeat(Math.min(sound.end, stopAt))!
+      // The damper falls at the release: later than the end while the pedal is down.
+      const off = transport.timeAtBeat(Math.min(sound.release, stopAt))!
       if (off <= now) continue
       piano.noteOn(sound.midi, sound.velocity, 'score', Math.max(now, at))
       piano.noteOff(sound.midi, 'score', off)

@@ -33,7 +33,8 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
       or played wrong. *Needs Jason.*
 - [ ] 🔀 **Dynamics in playback**: p/f marks and hairpins set the loudness. Today the upper
       staff plays at one fixed loudness and the others slightly softer.
-- [ ] 🔀 **Pedal marks** in playback (sustain).
+- [x] **Pedal marks** in playback (sustain): lines, Ped./✱ signs and changes hold notes until
+      the pedal lifts — 2026-10-17 (D-27). *Needs Jason: does the pedalling sound natural?*
 - [ ] 🔀 **Ornaments and timing marks**: trills, turns, fermatas, ritardando. Grace notes are
       played quickly on the beat.
 - [ ] **Big scores**: measure render time on a long score; render incrementally if slow.

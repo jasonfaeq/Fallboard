@@ -215,3 +215,14 @@ right, blue left) and every shortcut are unchanged; no dependency was added (ico
 own SVG). *Practice tools stay first (pillar 3): speeding a loop up gradually is the usual
 way to learn a hard passage, and a resizable split lets the keys or the sheet take the room.
 Fewer always-visible controls make the music the biggest thing on screen.*
+
+**D-27 · 2026-10-17 · Pedal marks hold notes by delaying their note-off** — The timeline reads
+OSMD's pedal marks (start, stop, change; lines or Ped./✱) into down/up spans in playing order,
+and gives each note a `release`: a note whose key comes up while the pedal is down rings until
+the pedal lifts, or until the same key is struck again. A note released exactly as the pedal
+goes down is not caught, as in legato pedalling. The pedal belongs to the instrument: a mark
+on either staff holds both hands, and muting one hand leaves the other pedalled. A pedal
+still down at the end lifts there. *Computing it in the timeline keeps the player simple and
+the result testable; seek, pause and loops already stop every note, so nothing can hang.*
+To get there the timeline now places everything by played position first and converts to
+seconds with one clock, which the tempo marks of D-29 also use.

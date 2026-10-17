@@ -16,9 +16,9 @@ repertoire plan are parked in `parked/midi-trainer/docs/MUSIC.md`.
 - Refused, with a message saying how to get MusicXML: MIDI (no notation in it) and PDF (a
   picture of the music).
 - What plays: every pitched note in every part, ties merged, repeats and 1st/2nd endings
-  followed, tempo marks applied (`<sound tempo>`). Not yet performed: dynamics, pedal marks,
-  fermatas, ritardando, trills and other ornaments (ROADMAP Phase R). Grace notes are played
-  quickly on the beat.
+  followed, tempo marks applied (`<sound tempo>`), sustain pedal marks (lines, Ped./✱ signs
+  and changes; D-27). Not yet performed: dynamics, fermatas, ritardando, trills and other
+  ornaments (ROADMAP Phase R). Grace notes are played quickly on the beat.
 
 ### Getting a score from MuseScore
 
@@ -52,8 +52,9 @@ Jason's ear. Edit them as MusicXML, for example in MuseScore Studio.
   redistribution with attribution. It is an asset licence, separate from the
   permissive-code rule (D-10).
 - One recorded layer: the nearest sample transposed at most two semitones, velocity-
-  controlled loudness, note-off release. There are no timbre changes across velocity, no
-  resonance and no pedal noise.
+  controlled loudness, note-off release. The score's pedal is played by sending each note's
+  note-off when the pedal lifts (D-27). There are no timbre changes across velocity, no
+  sympathetic resonance and no pedal noise.
 
 ## Licensing
 

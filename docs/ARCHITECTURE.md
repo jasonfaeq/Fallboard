@@ -52,7 +52,8 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   the score's tempo changes already applied. The player runs the Transport at tempo 60, so
   one transport beat is one score second, and speed is the Transport's rate (0.25–2).
 - **Scheduling:** `Player.update()` runs every 20 ms but only wakes the scheduler. Notes and
-  clicks due within the next 120 ms are scheduled at their exact audio-clock time. On a seek,
+  clicks due within the next 120 ms are scheduled at their exact audio-clock time. A note's
+  note-off is sent for its `release` (the pedal), cut at the loop end. On a seek,
   a speed change or a mute, sounding notes stop and the cursor is pointed at the new
   position; notes that should still sound there start again.
 - **What you see:** `Player.time` is the transport position minus the browser's reported
@@ -64,7 +65,11 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
 ## Timeline (`reader/timeline.ts`)
 
 Built from OSMD's parsed `MusicSheet`, not from the drawing. `MusicPartManager.getIterator()`
-walks every cursor stop in playing order, through repeats and 1st/2nd endings. For each stop:
+walks every cursor stop in playing order, through repeats and 1st/2nd endings. Everything is
+first placed by its **played position** (whole notes from the start in playing order, so a
+repeated bar adds its length again); then a `Clock` turns positions into score seconds,
+piecewise linear between the steps, with each step's tempo holding until the next. Notes,
+steps, passes, clicks and pedal marks all go through the same clock. For each stop:
 
 - **Pass:** a new measure, or a jump back into the same one, starts a new `Pass` (measure
   index, printed number, time, end, tempo, counted beats). A repeated bar has one pass per
@@ -78,6 +83,13 @@ walks every cursor stop in playing order, through repeats and 1st/2nd endings. F
   Loudness is fixed: 78 for the first staff and 64 for the others. Dynamics are not read yet.
 - **Marks:** every printed note (tie continuations included), with its time span, so the
   sheet can light it.
+- **Pedal (D-27):** OSMD puts sustain-pedal marks on its `MultiExpression`s
+  (`PedalStart`, `PedalEnd`; a "change" has both). They are read per pass from
+  `StaffLinkedExpressions` into `pedals` (down/up spans in score seconds); a pedal still down
+  at the end lifts there. The pedal belongs to the instrument, so a mark on either staff holds
+  every staff. Each sound gets a `release`: if its key comes up while the pedal is down
+  (strictly after the pedal went down), the damper falls when the pedal lifts, or earlier if
+  the same key is struck again. `end` stays the written length (keys and lit notes use it).
 - **Clicks:** the counted beat of each pass: the denominator's note, or dotted quarters in
   6/8, 9/8 and 12/8. Accents fall on downbeats. A pickup bar counts back from its bar line.
 - **Staves:** named "Right hand" and "Left hand" for a two-staff instrument, otherwise by
