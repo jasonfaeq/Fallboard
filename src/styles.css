@@ -336,3 +336,18 @@ kbd { display: inline-block; min-width: 26px; text-align: center; font: 600 12px
   .sheet-pane { padding: 8px 8px 0; }
   .settings { position: fixed; left: 12px; right: 12px; bottom: 150px; width: auto; transform-origin: bottom center; }
 }
+
+/* Saved sections, a popover above the loop button */
+.sections { right: auto; left: 50%; margin-left: -160px; transform-origin: bottom center; }
+.section-save { display: flex; gap: 8px; padding: 6px 0 4px; }
+.section-save input, .section-list input { flex: 1; min-width: 0; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--stage); color: var(--ink); font: inherit; }
+.section-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.section-list li { display: flex; align-items: center; gap: 2px; }
+.section-name { flex: 1; min-width: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 6px 10px; background: transparent; border-color: transparent; text-align: left; }
+.section-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.section-name small { flex: none; color: var(--faint); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.section-list li.on .section-name { color: var(--right); background: rgba(242, 184, 75, 0.1); }
+.sections .hint { margin: 8px 0 0; color: var(--faint); font-size: 12px; line-height: 1.4; }
+@media (max-width: 560px) {
+  .sections { left: 12px; margin-left: 0; }
+}

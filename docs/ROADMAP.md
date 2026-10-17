@@ -53,6 +53,9 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
       glowing notes, a Scores drawer with search; resizable sheet/keys split, full screen,
       previous/next bar buttons, Speed up loops — 2026-10-17 (D-26). *Needs Jason: does the
       new layout feel right at the piano, and is 5 % per repeat a good step?*
+- [x] **Saved sections per score**: save the loop under a name, pick a section to loop it
+      and jump to its start, rename, delete, `[` `]` for the previous/next one, remembered per
+      score — 2026-10-17 (D-32).
 
 ## Later
 

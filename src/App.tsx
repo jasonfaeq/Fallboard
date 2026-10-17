@@ -6,12 +6,13 @@ import { Player } from './reader/player'
 import { buildTimeline, passAt, type Timeline } from './reader/timeline'
 import { isMuseScoreFile, museScoreToMusicXml } from './reader/mscz'
 import { BUILT_IN, checkFile, deleteImported, importFile, listImported, loadImported, renameImported, sourceFrom, type ScoreEntry, type ScoreSource } from './reader/library'
-import { ROW_CHOICES, loadPrefs, loadScorePrefs, savePrefs, saveScorePrefs, type Prefs, type ScorePrefs, type View } from './reader/prefs'
+import { ROW_CHOICES, SCORE_DEFAULTS, loadPrefs, loadScorePrefs, savePrefs, saveScorePrefs, type Prefs, type ScorePrefs, type Section, type View } from './reader/prefs'
 import SheetView from './ui/SheetView'
 import KeysView from './ui/KeysView'
 import Library from './ui/Library'
 import Scrubber, { clock } from './ui/Scrubber'
 import Settings from './ui/Settings'
+import Sections from './ui/Sections'
 import Icon from './ui/Icons'
 
 declare global {
@@ -23,11 +24,15 @@ declare global {
 
 const SHORTCUTS: [string, string][] = [
   ['Space', 'Play / pause'], ['Home', 'Back to the start'], ['← →', 'Previous / next bar'], ['↑ ↓', 'Faster / slower'],
-  ['L', 'Loop this bar (Shift+click a bar to stretch the loop)'], ['M', 'Metronome'], ['1 – 4', 'Rows of music'],
+  ['L', 'Loop this bar (Shift+click a bar to stretch the loop)'], ['[ · ]', 'Loop the previous / next saved section'], ['M', 'Metronome'], ['1 – 4', 'Rows of music'],
   ['S · K · B', 'Sheet · Keys · Both'], ['N', 'Note names'], ['F', 'Full screen'], ['O', 'Scores'], ['?', 'This list'],
 ]
 const VIEWS: [View, string][] = [['sheet', 'Sheet'], ['keys', 'Keys'], ['both', 'Both']]
 const loopLabel = (first: number, last: number) => first === last ? `Loop bar ${first}` : `Loop bars ${first}–${last}`
+const barsLabel = (t: Timeline, first: number, last: number) => {
+  const a = t.passes[first]?.number, b = t.passes[last]?.number
+  return a === undefined || b === undefined ? '—' : a === b ? `Bar ${a}` : `Bars ${a}–${b}`
+}
 
 export default function App() {
   const [, redraw] = useReducer((n: number) => n + 1, 0)
@@ -42,13 +47,14 @@ export default function App() {
   const [imported, setImported] = useState<ScoreEntry[]>([])
   const [entry, setEntry] = useState<ScoreEntry | null>(null)
   const [source, setSource] = useState<{ key: string; data: ScoreSource } | null>(null)
-  const [scorePrefs, setScorePrefs] = useState<ScorePrefs>({ speed: 1, transpose: 0, volumes: {} })
+  const [scorePrefs, setScorePrefs] = useState<ScorePrefs>(SCORE_DEFAULTS)
   const [timeline, setTimeline] = useState<Timeline | null>(null)
   const [loop, setLoopPasses] = useState<[number, number] | null>(null)
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [help, setHelp] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [sectionsOpen, setSectionsOpen] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const [dropping, setDropping] = useState(false)
   const [pressed, setPressed] = useState<ReadonlySet<number>>(new Set())
@@ -162,6 +168,34 @@ export default function App() {
     anchor.current = i
     setLoop([i, i])
   }
+
+  // Saved sections: named loops, kept per score in the order they come in the piece.
+  const sections = scorePrefs.sections
+  const activeSection = loop ? sections.findIndex((s) => s.first === loop[0] && s.last === loop[1]) : -1
+  const saveSection = (name: string) => {
+    if (!loop) return
+    const kept = sections.filter((s) => s.first !== loop[0] || s.last !== loop[1])
+    const next: Section[] = [...kept, { name, first: loop[0], last: loop[1] }]
+    updateScorePrefs({ sections: next.sort((a, b) => a.first - b.first || a.last - b.last) })
+  }
+  const pickSection = (index: number) => {
+    const s = sections[index]
+    if (!s || !timeline || s.last >= timeline.passes.length) return
+    anchor.current = s.first
+    setLoop([s.first, s.last])
+    p.seek(timeline.passes[s.first].time)
+  }
+  const stepSection = (direction: 1 | -1) => {
+    if (!sections.length || !timeline) return
+    const n = sections.length
+    if (activeSection >= 0) { pickSection((activeSection + direction + n) % n); return }
+    const here = passAt(timeline, p.time)
+    const before = sections.filter((s) => s.first < here).length
+    // ] the first section from this bar on, [ the last one before it; both wrap round.
+    pickSection(direction > 0 ? (before < n ? before : 0) : (before > 0 ? before - 1 : n - 1))
+  }
+  const closeSections = useCallback(() => setSectionsOpen(false), [])
+
   const setSpeed = (speed: number) => { p.setSpeed(speed); updateScorePrefs({ speed: p.speed }) }
   // Speed up loops: each time round, 5 % faster until 100 %.
   p.onLoop = () => { if (latest.current.prefs.speedUp && p.speed < 1) setSpeed(Math.min(1, p.speed + 0.05)) }
@@ -241,10 +275,10 @@ export default function App() {
     const actions: Record<string, () => void> = {
       ' ': () => p.toggle(), Home: () => p.stop(), ArrowLeft: () => stepBar(-1), ArrowRight: () => stepBar(1),
       ArrowUp: () => setSpeed(p.speed + 0.05), ArrowDown: () => setSpeed(p.speed - 0.05),
-      l: loopHere, m: () => updatePrefs({ metronome: !prefs.metronome }), n: () => updatePrefs({ noteNames: !prefs.noteNames }),
+      l: loopHere, '[': () => stepSection(-1), ']': () => stepSection(1), m: () => updatePrefs({ metronome: !prefs.metronome }), n: () => updatePrefs({ noteNames: !prefs.noteNames }),
       s: () => updatePrefs({ view: 'sheet' }), k: () => updatePrefs({ view: 'keys' }), b: () => updatePrefs({ view: 'both' }),
       f: toggleFullscreen, o: () => setLibraryOpen((v) => !v), '?': () => setHelp((v) => !v),
-      Escape: () => { setHelp(false); setLibraryOpen(false); setSettingsOpen(false) },
+      Escape: () => { setHelp(false); setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false) },
       '1': () => updatePrefs({ rows: 1 }), '2': () => updatePrefs({ rows: 2 }), '3': () => updatePrefs({ rows: 3 }), '4': () => updatePrefs({ rows: 4 }),
     }
     const action = actions[key.length === 1 ? key.toLowerCase() : key]
@@ -349,9 +383,18 @@ export default function App() {
           <button className="icon-button" onClick={() => stepBar(1)} disabled={!timeline} title="Next bar (→)" aria-label="Next bar"><Icon name="next" /></button>
           <button className={`loop-button${loop ? ' on' : ''}`} aria-pressed={!!loop} onClick={loopHere} title="Loop this bar (L). Shift+click another bar to stretch the loop.">
             <Icon name="loop" />
-            <span>{loop && timeline ? loopLabel(timeline.passes[loop[0]].number, timeline.passes[loop[1]].number) : 'Loop'}</span>
+            <span>{activeSection >= 0 ? sections[activeSection].name : loop && timeline ? loopLabel(timeline.passes[loop[0]].number, timeline.passes[loop[1]].number) : 'Loop'}</span>
             {loop && p.repeats > 0 && <em aria-hidden="true">×{p.repeats + 1}</em>}
           </button>
+          <div className="settings-anchor">
+            <button className={`icon-button${sectionsOpen ? ' on' : ''}`} data-sections-toggle aria-expanded={sectionsOpen} aria-label="Sections"
+              title="Saved sections ([ ])" disabled={!timeline} onClick={() => setSectionsOpen((v) => !v)}><Icon name="sections" /></button>
+            {sectionsOpen && timeline && <Sections sections={sections} active={activeSection} label={(s) => barsLabel(timeline, s.first, s.last)}
+              loop={loop ? { name: barsLabel(timeline, loop[0], loop[1]), first: loop[0], last: loop[1] } : null}
+              onSave={saveSection} onPick={pickSection} onClose={closeSections}
+              onRename={(i, name) => updateScorePrefs({ sections: sections.map((s, j) => j === i ? { ...s, name } : s) })}
+              onDelete={(i) => updateScorePrefs({ sections: sections.filter((_, j) => j !== i) })} />}
+          </div>
         </div>
 
         <div className="dock-end">

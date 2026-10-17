@@ -35,7 +35,7 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   resize the keys (20–75 % of the stage, double-click resets to 42 %, remembered as
   `split`). Messages float over the stage; the count-in shows a large number.
 - **Dock**: the scrubber, then the position and the hands (left), the transport —
-  start, previous bar, play, next bar, loop with a repeat count (centre) — and speed,
+  start, previous bar, play, next bar, loop with a repeat count, sections (centre) — and speed,
   metronome, count-in and Settings (right).
 - **Settings** (`ui/Settings.tsx`, a popover over the dock): speed presets, Speed up loops,
   transpose, note names, paper or night sheet, volume, room, and each hand's volume.
@@ -44,6 +44,12 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   mute and unmute (back to the hand's last volume) and show a volume below 100 %; the sliders
   are in Settings. Muting or unmuting while playing re-cues at once; a new level applies from
   the next note.
+- **Sections** (`ui/Sections.tsx`, a popover above the dock's bookmark button): saves the
+  loop under a name (default "Bars 12–16"), lists the score's sections in the order they
+  come, and picks (sets the loop and seeks to its first bar), renames or deletes them. A
+  section is its first and last pass, so a repeated bar is told apart. The loop button shows
+  the section's name while its loop is set; `[` and `]` loop the previous or next section
+  (without one set, the first after or the last before the playhead).
 - **Speed up loops**: the player calls `onLoop(repeats)` each time a loop comes round; with
   the setting on, the app adds 5 % to the speed until 100 % (it never slows a faster speed).
 - Icons are our own line drawings in `ui/Icons.tsx`; colours and controls are CSS variables
@@ -183,7 +189,8 @@ separately. The page pauses playback when it is hidden.
   converted to). If storage fails, the score still opens but is not kept.
 - `reader/prefs.ts`: localStorage `piano-trainer:prefs` (view, rows, theme, note names,
   metronome, count-in, volume, room, Speed up loops, keys split, last score) and `piano-trainer:score:<id>` (speed,
-  transposition, each staff's volume as `volumes`; an older `muted` list is read as volume 0).
+  transposition, each staff's volume as `volumes`; an older `muted` list is read as volume 0;
+  saved `sections` as `{ name, first, last }` pass indices, malformed ones dropped).
   Every access is wrapped in try/catch.
 
 ## Build & run
@@ -215,7 +222,8 @@ Shift+click and L loops wrapping, transposition, muting, views, rows fitting (2/
 lines, decreasing zoom; 1 row scrolls), clicking keys, remembered settings, the
 Transport with a fake clock; pedal releases (and loops and a muted hand with the pedal),
 velocities from dynamics, fermata/rit./accel. times and ornament notes (timeline and what
-the player sends), hand volumes with the old-prefs migration, and the room setting.
+the player sends), hand volumes with the old-prefs migration, and the room setting. `practice.spec.ts` (the
+Ode fixture): saved sections across reloads.
 
 Not covered: how real MuseScore downloads look and sound, and how the audio feels. Those
 need Jason.

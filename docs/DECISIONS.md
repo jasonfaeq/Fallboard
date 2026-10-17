@@ -269,3 +269,13 @@ after a 12 ms pre-delay that dies away by 60 dB over 0.9, 2.2 or 3.6 s and darke
 does, mixed in at 0.2, 0.28 or 0.34 beside the dry piano. Only the piano goes through it, not
 the metronome. *No dependency and no recorded impulse file to license; four named choices
 are easier to compare by ear than a slider.*
+
+**D-32 · 2026-10-17 · Saved sections are named loops by pass** — A section is the loop's first
+and last pass (indices into the timeline's passes), with a name that defaults to its bars
+("Bars 12–16"); it is kept per score with the other score settings. Pass indices, not printed
+bar numbers, so a section in a repeat's second time (or a 2nd ending) loops exactly that.
+The list is kept in the order the sections come in the piece; saving the same bars again
+renames the old one. It opens from a bookmark button next to the loop button, and `[` / `]`
+loop the previous or next section, which is how Jason would move between hard passages at the
+piano. *If a built-in score's bars change in a later version, an out-of-range section is
+ignored rather than guessed.*

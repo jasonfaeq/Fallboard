@@ -1,5 +1,5 @@
-// Settings remembered in this browser: the reader's layout, and per score its speed, transposition
-// and each staff's volume. Storage can be unavailable (private windows); everything still works without it.
+// Settings remembered in this browser: the reader's layout, and per score its speed, transposition,
+// each staff's volume and its saved sections. Storage can be unavailable (private windows); everything still works without it.
 import type { Room } from '../engine/audio'
 
 export type View = 'sheet' | 'keys' | 'both'
@@ -19,12 +19,14 @@ export interface Prefs {
   split: number
   lastScore: string
 }
+/** a named loop: the first and last pass (an index into `Timeline.passes`, so repeats are told apart) */
+export interface Section { name: string; first: number; last: number }
 /** `volumes`: staff index → 0–1 (0 = muted); a staff not listed plays at full volume */
-export interface ScorePrefs { speed: number; transpose: number; volumes: Record<number, number> }
+export interface ScorePrefs { speed: number; transpose: number; volumes: Record<number, number>; sections: Section[] }
 
 export const ROW_CHOICES = [1, 2, 3, 4] as const
 const DEFAULTS: Prefs = { view: 'both', rows: 2, theme: 'paper', noteNames: false, metronome: false, countIn: true, volume: 0.8, room: 'off', speedUp: false, split: 0.42, lastScore: '' }
-const SCORE_DEFAULTS: ScorePrefs = { speed: 1, transpose: 0, volumes: {} }
+export const SCORE_DEFAULTS: ScorePrefs = { speed: 1, transpose: 0, volumes: {}, sections: [] }
 
 function read<T extends object>(key: string, defaults: T): T {
   try {
@@ -43,6 +45,8 @@ export function loadScorePrefs(id: string): ScorePrefs {
   // Before hand volumes (D-30) the muted staves were kept as a list.
   if (Array.isArray(saved.muted)) saved.volumes = { ...Object.fromEntries(saved.muted.map((staff: number) => [staff, 0])), ...saved.volumes }
   delete saved.muted
+  if (!Array.isArray(saved.sections)) saved.sections = []
+  saved.sections = saved.sections.filter((s) => s && typeof s.name === 'string' && Number.isInteger(s.first) && Number.isInteger(s.last) && s.last >= s.first)
   return saved
 }
 export const saveScorePrefs = (id: string, prefs: ScorePrefs) => write(`piano-trainer:score:${id}`, prefs)
