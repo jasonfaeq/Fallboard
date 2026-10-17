@@ -1,5 +1,6 @@
 // Settings remembered in this browser: the reader's layout, and per score its speed, transposition
 // and each staff's volume. Storage can be unavailable (private windows); everything still works without it.
+import type { Room } from '../engine/audio'
 
 export type View = 'sheet' | 'keys' | 'both'
 export interface Prefs {
@@ -10,6 +11,8 @@ export interface Prefs {
   metronome: boolean
   countIn: boolean
   volume: number
+  /** the room the piano plays in (reverb) */
+  room: Room
   /** each time a loop comes round, play it 5 % faster, up to 100 % */
   speedUp: boolean
   /** the keys' share of the stage in the Both view */
@@ -20,7 +23,7 @@ export interface Prefs {
 export interface ScorePrefs { speed: number; transpose: number; volumes: Record<number, number> }
 
 export const ROW_CHOICES = [1, 2, 3, 4] as const
-const DEFAULTS: Prefs = { view: 'both', rows: 2, theme: 'paper', noteNames: false, metronome: false, countIn: true, volume: 0.8, speedUp: false, split: 0.42, lastScore: '' }
+const DEFAULTS: Prefs = { view: 'both', rows: 2, theme: 'paper', noteNames: false, metronome: false, countIn: true, volume: 0.8, room: 'off', speedUp: false, split: 0.42, lastScore: '' }
 const SCORE_DEFAULTS: ScorePrefs = { speed: 1, transpose: 0, volumes: {} }
 
 function read<T extends object>(key: string, defaults: T): T {

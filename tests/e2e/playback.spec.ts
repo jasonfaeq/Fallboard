@@ -222,3 +222,32 @@ test('playback: a hand muted before hand volumes existed stays muted', async ({ 
   await expect(page.getByRole('button', { name: 'Left hand', exact: true })).toHaveAttribute('aria-pressed', 'false')
   expect(await page.evaluate(() => [window.__piano.player.volumeOf(0), window.__piano.player.volumeOf(1)])).toEqual([1, 0])
 })
+
+test('playback: the room setting adds a generated echo and is remembered', async ({ page }) => {
+  const errors = await open(page, 'ode-repeat.musicxml', 'Ode to Joy (test)')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const room = page.getByRole('group', { name: 'Room' })
+  await expect(room.getByRole('button', { name: 'Off' })).toHaveAttribute('aria-pressed', 'true')
+  await room.getByRole('button', { name: 'Hall', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await expect.poll(() => time(page)).toBeGreaterThan(0.3)
+  const echo = () => page.evaluate(() => {
+    const { engine } = window.__piano
+    return { room: engine.room, seconds: engine.reverb?.buffer?.duration ?? 0, wet: engine.wet?.gain.value ?? 0, voices: engine.piano?.activeVoices ?? 0 }
+  })
+  await expect.poll(async () => (await echo()).wet).toBeGreaterThan(0.27)
+  expect(await echo()).toMatchObject({ room: 'hall', seconds: 2.2 })
+  expect((await echo()).voices).toBeGreaterThan(0)
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
+
+  await page.reload()
+  await page.waitForFunction(() => window.__piano?.timeline?.sounds.length === 30)
+  expect(await page.evaluate(() => window.__piano.engine.room)).toBe('hall')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await expect(room.getByRole('button', { name: 'Hall', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await room.getByRole('button', { name: 'Off' }).click()
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await expect.poll(async () => (await echo()).wet).toBeLessThan(0.01)
+  expect(errors).toEqual([])
+})

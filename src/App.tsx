@@ -214,6 +214,7 @@ export default function App() {
     p.onChange = redraw
     engine.current!.onChange = redraw
     engine.current!.volume = latest.current.prefs.volume
+    engine.current!.room = latest.current.prefs.room
     let frame = 0
     const tick = () => { if (p.playing) redraw(); frame = requestAnimationFrame(tick) }
     frame = requestAnimationFrame(tick)
@@ -370,7 +371,8 @@ export default function App() {
             {settingsOpen && <Settings prefs={prefs} transpose={scorePrefs.transpose} speed={p.speed} onPrefs={updatePrefs} onClose={closeSettings}
               staves={timeline && timeline.staves.length > 1 ? timeline.staves : []} handVolume={(staff) => p.volumeOf(staff)} onHandVolume={setHandVolume}
               onTranspose={(transpose) => updateScorePrefs({ transpose })} onSpeed={setSpeed}
-              onVolume={(v) => { engine.current!.volume = v; updatePrefs({ volume: v }) }} />}
+              onVolume={(v) => { engine.current!.volume = v; updatePrefs({ volume: v }) }}
+              onRoom={(room) => { engine.current!.room = room; updatePrefs({ room }) }} />}
           </div>
         </div>
       </div>

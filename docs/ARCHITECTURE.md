@@ -38,7 +38,7 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   start, previous bar, play, next bar, loop with a repeat count (centre) — and speed,
   metronome, count-in and Settings (right).
 - **Settings** (`ui/Settings.tsx`, a popover over the dock): speed presets, Speed up loops,
-  transpose, note names, paper or night sheet, volume, and each hand's volume.
+  transpose, note names, paper or night sheet, volume, room, and each hand's volume.
 - **Hands (D-30)**: each staff has a volume 0–100 % (`Player.volumes`; 0 = muted), sent to
   the piano as `noteOn(…, level)`, which scales the note's gain. The hand chips in the dock
   mute and unmute (back to the hand's last volume) and show a volume below 100 %; the sliders
@@ -165,7 +165,12 @@ the lit notes (used by tests).
 ## Audio (`engine/audio.ts`, `engine/piano.ts`)
 
 `Engine` owns the gesture-started `AudioContext` (`latencyHint: 'interactive'`), master
-volume, a limiter, the piano and `click(time, accent)`. The piano (D-17) loads 30 local
+volume, a limiter, the piano, the room echo and `click(time, accent)`. The piano plays into
+an instrument bus that goes to the master volume directly and, unless the room is Off,
+through a `ConvolverNode` and a wet gain (D-31). The echo is generated (`roomEcho`): stereo
+noise after a 12 ms pre-delay, dying away by 60 dB over 0.9 s (Room), 2.2 s (Hall) or 3.6 s
+(Large hall) and growing darker as it does, at wet levels 0.2, 0.28 and 0.34. Metronome
+clicks skip the echo. The piano (D-17) loads 30 local
 Salamander MP3s, plays the nearest sample transposed at most two semitones, with velocity
 gain, a 350 ms release and at most 96 voices. Channels `'score'` and `'touch'` hold notes
 separately. The page pauses playback when it is hidden.
@@ -176,7 +181,7 @@ separately. The page pauses playback when it is hidden.
   file name, date) and `data` (the file's bytes; for a MuseScore file, the MusicXML it was
   converted to). If storage fails, the score still opens but is not kept.
 - `reader/prefs.ts`: localStorage `piano-trainer:prefs` (view, rows, theme, note names,
-  metronome, count-in, volume, Speed up loops, keys split, last score) and `piano-trainer:score:<id>` (speed,
+  metronome, count-in, volume, room, Speed up loops, keys split, last score) and `piano-trainer:score:<id>` (speed,
   transposition, each staff's volume as `volumes`; an older `muted` list is read as volume 0).
   Every access is wrapped in try/catch.
 

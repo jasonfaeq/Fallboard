@@ -1,5 +1,34 @@
 import { Piano } from './piano'
 
+export type Room = 'off' | 'room' | 'hall' | 'large'
+/** The room the piano plays in (D-31): how long its echo takes to die away (60 dB, in seconds)
+ *  and how loud the echo is next to the piano. */
+export const ROOMS: Record<Room, { label: string; seconds: number; wet: number }> = {
+  off: { label: 'Off', seconds: 0, wet: 0 },
+  room: { label: 'Room', seconds: 0.9, wet: 0.2 },
+  hall: { label: 'Hall', seconds: 2.2, wet: 0.28 },
+  large: { label: 'Large hall', seconds: 3.6, wet: 0.34 },
+}
+
+/** A made-up room echo: stereo noise after a short pre-delay that dies away over `seconds` and
+ *  turns darker as it does, like the walls soaking up the highs. */
+export function roomEcho(context: BaseAudioContext, seconds: number) {
+  const rate = context.sampleRate
+  const length = Math.max(1, Math.round(seconds * rate))
+  const buffer = context.createBuffer(2, length, rate)
+  const predelay = Math.round(0.012 * rate)
+  for (let channel = 0; channel < 2; channel++) {
+    const data = buffer.getChannelData(channel)
+    let low = 0
+    for (let i = predelay; i < length; i++) {
+      const t = i / length
+      low += (Math.random() * 2 - 1 - low) * (0.9 - 0.75 * t)
+      data[i] = low * Math.exp(-6.9 * t) * Math.min(1, (i - predelay) / (0.004 * rate))
+    }
+  }
+  return buffer
+}
+
 /** All positions are derived from this clock, never accumulated by frames or timers. */
 export class Transport {
   private anchorBeat = 0
@@ -56,11 +85,19 @@ export class Transport {
   }
 }
 
-/** AudioContext, master volume, limiter and the sampled piano. Scheduling lives in the reader's Player. */
+/** AudioContext, master volume, limiter, the room echo and the sampled piano. Scheduling lives in
+ *  the reader's Player. The piano goes to the output directly and through the room; clicks only
+ *  directly. */
 export class Engine {
   context: AudioContext | null = null
   piano: Piano | null = null
   output: GainNode | null = null
+  reverb: ConvolverNode | null = null
+  /** the room echo's level */
+  wet: GainNode | null = null
+  private instrument: GainNode | null = null
+  private roomName: Room = 'off'
+  private echoing = false
   transport = new Transport(() => this.context?.currentTime ?? 0)
   status: 'off' | 'loading' | 'ready' | 'error' = 'off'
   error = ''
@@ -74,6 +111,27 @@ export class Engine {
   set volume(value: number) {
     this.level = Math.max(0, Math.min(1, value))
     if (this.output && this.context) this.output.gain.setTargetAtTime(this.level, this.context.currentTime, 0.02)
+  }
+  get room() { return this.roomName }
+  set room(value: Room) {
+    if (!ROOMS[value]) return
+    const changed = value !== this.roomName
+    this.roomName = value
+    if (changed || !this.reverb?.buffer) this.applyRoom()
+  }
+  private applyRoom() {
+    const { context, instrument, reverb, wet } = this
+    if (!context || !instrument || !reverb || !wet) return
+    const room = ROOMS[this.roomName]
+    if (room.seconds > 0) {
+      reverb.buffer = roomEcho(context, room.seconds)
+      if (!this.echoing) instrument.connect(reverb)
+      this.echoing = true
+    } else if (this.echoing) {
+      instrument.disconnect(reverb)
+      this.echoing = false
+    }
+    wet.gain.setTargetAtTime(room.wet, context.currentTime, 0.05)
   }
 
   /** Called by a user gesture, so normal browser autoplay protection is respected. */
@@ -98,7 +156,14 @@ export class Engine {
         limiter.attack.value = 0.003
         limiter.release.value = 0.1
         this.output.connect(limiter).connect(this.context.destination)
-        this.piano = new Piano(this.context, this.output)
+        this.instrument = this.context.createGain()
+        this.instrument.connect(this.output)
+        this.reverb = this.context.createConvolver()
+        this.wet = this.context.createGain()
+        this.wet.gain.value = 0
+        this.reverb.connect(this.wet).connect(this.output)
+        this.applyRoom()
+        this.piano = new Piano(this.context, this.instrument)
         this.context.onstatechange = () => this.onChange()
       }
       await this.context.resume()

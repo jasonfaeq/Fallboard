@@ -259,3 +259,11 @@ one-click mute and unmute back to the hand's last volume, and show the volume wh
 below 100 %; the sliders live in Settings, where there is room. The volume scales the
 note's gain linearly on top of its velocity, so the dynamics are kept. *A slider per hand in
 the dock would crowd it; the chips cover the common case.*
+
+**D-31 · 2026-10-17 · A room echo made by our own code** — Settings has a Room choice: Off,
+Room, Hall, Large hall (remembered, default Off so nothing changes until Jason picks one).
+The echo is a `ConvolverNode` with an impulse response generated at start-up: stereo noise
+after a 12 ms pre-delay that dies away by 60 dB over 0.9, 2.2 or 3.6 s and darkens as it
+does, mixed in at 0.2, 0.28 or 0.34 beside the dry piano. Only the piano goes through it, not
+the metronome. *No dependency and no recorded impulse file to license; four named choices
+are easier to compare by ear than a slider.*

@@ -47,6 +47,8 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
 - [ ] MIDI-file import for the Keys view (a MIDI file has no sheet music).
 - [x] **Volume per hand**: 0–100 % per staff in Settings, the hand chips still mute,
       remembered per score (old muted settings carried over) — 2026-10-17 (D-30).
+- [x] **Room setting**: Off, Room, Hall or Large hall, a generated echo, remembered —
+      2026-10-17 (D-31). *Needs Jason: are the amounts right, and should it default to on?*
 - [x] **Look and layout**: a top bar and a player dock, a settings popover, shaded keys and
       glowing notes, a Scores drawer with search; resizable sheet/keys split, full screen,
       previous/next bar buttons, Speed up loops — 2026-10-17 (D-26). *Needs Jason: does the
