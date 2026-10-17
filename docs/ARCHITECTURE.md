@@ -80,7 +80,8 @@ keys and scrubber follow fermatas and ritardandos too. The clock's rate at a pos
 
 - **rit./accel. (D-29):** words in OSMD's `TempoExpressions` (and unrecognised staff words)
   matching rit., rall., allarg., calando… or accel., string… start a linear change of the
-  tempo factor to ×0.7 (or ×1.3) by the next tempo mark; "a tempo", "tempo I", a new metronome
+  tempo factor to ×0.7 (or ×1.3) by the next tempo mark (OSMD's own made-up bpm for such a
+  word, e.g. 60 for "poco accel.", is ignored); "a tempo", "tempo I", a new metronome
   tempo or a jump back for a repeat set it to 1. Without one it runs to the end. The clock
   steps through each change in 1/64ths of a whole note.
 - **Fermatas (D-29):** a fermata (`ArticulationEnum.fermata`/`invertedfermata`, on a note or
@@ -199,14 +200,22 @@ worker. `window.__piano = { engine, player, timeline, osmd }` exposes state for 
 Fixtures: `tests/fixtures/ode-repeat.musicxml` (and the same as `.mxl`): four bars with a
 repeat and 1st/2nd endings, so passes are 1 2 3 1 2 4. `ode-repeat.mscz` and
 `chopin-op28-4.mscz` are the same Ode and the built-in Chopin saved by MuseScore Studio 4
-(thumbnails removed); they must give the same timelines as the MusicXML.
+(thumbnails removed); they must give the same timelines as the MusicXML. For the marks
+(`playback.spec.ts`), small two-staff pieces at ♩ = 120: `pedal.musicxml` (line pedal with
+a change, Ped./✱ signs), `dynamics.musicxml` (p, a hairpin to ff, an accent, a diminuendo to
+mp, the left hand's own f), `timing.musicxml` (G major: a fermata, rit. to a tempo, a trill, a
+turn, a mordent, poco accel.) and `ode-rit.mscx` (the Ode with a MuseScore 4 rit. line over
+its last bar). `playback.spec.ts` wraps the piano's `noteOn`/`noteOff` to log what the player
+sends, in score seconds.
 
 Covered: the built-in timelines (note counts and lengths), import and library persistence,
 MuseScore-file conversion,
 refusal messages, playback with lit notes and keys, count-in, repeats, click-to-seek,
 Shift+click and L loops wrapping, transposition, muting, views, rows fitting (2/3/4 visible
-lines, decreasing zoom; 1 row scrolls), clicking keys, remembered settings, and the
-Transport with a fake clock.
+lines, decreasing zoom; 1 row scrolls), clicking keys, remembered settings, the
+Transport with a fake clock; pedal releases (and loops and a muted hand with the pedal),
+velocities from dynamics, fermata/rit./accel. times and ornament notes (timeline and what
+the player sends), hand volumes with the old-prefs migration, and the room setting.
 
 Not covered: how real MuseScore downloads look and sound, and how the audio feels. Those
 need Jason.

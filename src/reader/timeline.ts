@@ -127,6 +127,7 @@ export function buildTimeline(sheet: MusicSheet, transpose = 0): Timeline {
   const it = sheet.MusicPartManager.getIterator()
   let at = 0
   let bpm = tempoAt(it, start)
+  let reported = bpm
   let previous: { at: number; measureEnd: number } | null = null
 
   for (let guard = 0; !it.EndReached && guard < 1_000_000; guard++, it.moveToNext()) {
@@ -139,7 +140,10 @@ export function buildTimeline(sheet: MusicSheet, transpose = 0): Timeline {
     // A new pass starts at a new measure, or when a repeat jumps back into the same one.
     const newPass = !last || last.measure !== index || (previous !== null && printed <= previous.at + EPS)
     if (previous) at += newPass ? previous.measureEnd - previous.at + rel : printed - previous.at
-    bpm = tempoAt(it, bpm)
+    // OSMD gives words like "accel." a made-up tempo of its own; those change gradually instead (D-29).
+    const now = tempoAt(it, reported)
+    if (now !== reported && !gradualWordAt(measure, rel)) bpm = now
+    reported = now
     if (newPass) {
       const passStart = at - rel
       if (last) last.until = passStart
@@ -235,6 +239,13 @@ function addNotes(entries: VoiceEntry[], at: number, measure: number, transpose:
   }
 }
 
+/** whether the last tempo mark at or before `rel` in this measure is a rit./accel. word, not a metronome mark */
+function gradualWordAt(measure: MusicSheet['SourceMeasures'][number], rel: number) {
+  const mark = measure.TempoExpressions.filter((t) => t.Timestamp.RealValue <= rel + EPS).at(-1)
+  const label = [mark?.InstantaneousTempo?.Label, mark?.ContinuousTempo?.Label].join(' ')
+  return !!mark && !mark.InstantaneousTempo?.isMetronomeMark && !RESUME.test(label) && (SLOWER.test(label) || FASTER.test(label))
+}
+
 /** The key signature (sharps > 0, flats < 0) of every measure and staff, as printed. */
 function keySignatures(sheet: MusicSheet): number[][] {
   let current = sheet.Staves.map(() => 0)
@@ -299,7 +310,10 @@ function tempoMarksFor(sheet: MusicSheet, passes: RawPass[], steps: RawStep[]) {
     const measure = sheet.SourceMeasures[pass.measure]
     for (const tempo of measure.TempoExpressions) {
       const at = pass.at + tempo.Timestamp.RealValue
-      add(at, [tempo.InstantaneousTempo?.Label, tempo.ContinuousTempo?.Label].join(' '), (tempo.InstantaneousTempo?.TempoInBpm ?? 0) > 0)
+      const text = [tempo.InstantaneousTempo?.Label, tempo.ContinuousTempo?.Label].join(' ')
+      // A new tempo restores it, unless it is OSMD's guess for a rit./accel. word.
+      const gradual = !tempo.InstantaneousTempo?.isMetronomeMark && (SLOWER.test(text) || FASTER.test(text))
+      add(at, text, (tempo.InstantaneousTempo?.TempoInBpm ?? 0) > 0 && !gradual)
     }
     for (const list of measure.StaffLinkedExpressions) {
       for (const expression of list) {

@@ -249,7 +249,9 @@ doubles the last part of its note (from the last step before the note ends), add
 note; **turns, inverted and delayed turns, mordents** play their four or three notes at that
 speed and hold the last. Neighbour notes follow the key signature or the ornament's printed
 accidental (not earlier accidentals in the bar). Times are score seconds, so ornaments slow
-down with the speed slider. *Plain rules that are easy to hear and change; every number is a
+down with the speed slider. OSMD gives some of these words a made-up tempo of its own (it read
+"poco accel." as ♩ = 60, so such a bar used to play at half speed); for rit./accel. words that
+are not metronome marks the timeline ignores it. *Plain rules that are easy to hear and change; every number is a
 guess for Jason to judge.*
 
 **D-30 · 2026-10-17 · A volume per hand instead of a mute** — Jason asked to hear the other

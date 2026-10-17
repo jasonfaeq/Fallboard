@@ -139,7 +139,8 @@ test('playback: fermatas hold, rit. slows to a tempo, and ornaments play their n
   const rit = 2 * Math.log(1 / 0.7) / 0.3 // bar 2 slows from 100 % to 70 % of the tempo
   const expected = [0, 2.5, 2.5 + rit, 4.5 + rit]
   t.passes.forEach((time, i) => expect(time).toBeCloseTo(expected[i], 3))
-  expect(t.end).toBeCloseTo(6.5 + rit, 3)
+  // poco accel. in the last bar speeds up to 130 % by the end (OSMD's own guess of ♩ = 60 is ignored).
+  expect(t.end).toBeCloseTo(4.5 + rit + 2 * Math.log(1.3) / 0.3, 3)
   expect(t.upper[3].slice(1)).toEqual([1.5, 2.5])
   expect(t.lower[0]).toEqual([0, 2.5])
   // In the rit. each beat is longer than the one before; the metronome follows.

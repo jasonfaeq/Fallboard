@@ -19,7 +19,8 @@ repertoire plan are parked in `parked/midi-trainer/docs/MUSIC.md`.
   followed, tempo marks applied (`<sound tempo>`), sustain pedal marks (lines, Ped./✱ signs
   and changes; D-27), dynamics, hairpins and accents (D-28), fermatas, rit./rall./accel. to
   "a tempo", trills, turns and mordents (D-29). Grace notes are played quickly on the beat.
-  Not performed: staccato and tenuto lengths, arpeggios, tremolos, cresc./dim. as words.
+  "cresc." and "dim." written as words work like hairpins (OSMD reads them as such). Not
+  performed: staccato and tenuto lengths, arpeggios, tremolos.
 
 ### Getting a score from MuseScore
 
