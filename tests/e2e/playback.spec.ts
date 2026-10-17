@@ -123,3 +123,58 @@ test('playback: dynamics, hairpins and accents set each note’s loudness', asyn
   expect([...new Set(await velocities(1))]).toEqual([64])
   expect(errors).toEqual([])
 })
+
+test('playback: fermatas hold, rit. slows to a tempo, and ornaments play their notes', async ({ page }) => {
+  const errors = await open(page, 'timing.musicxml', 'Timing (test)')
+  const t = await page.evaluate(() => {
+    const tl = window.__piano.timeline!
+    return {
+      passes: tl.passes.map((p) => p.time), end: tl.end,
+      upper: tl.sounds.filter((s) => s.staff === 0).map((s) => [s.midi, s.time, s.end]),
+      lower: tl.sounds.filter((s) => s.staff === 1).map((s) => [s.time, s.end]),
+      clicks: tl.clicks.map((c) => c.time), steps: tl.steps.map((s) => s.time),
+    }
+  })
+  // ♩ = 120. The fermata doubles bar 1's last beat (0.5 s more), and the left hand holds with it.
+  const rit = 2 * Math.log(1 / 0.7) / 0.3 // bar 2 slows from 100 % to 70 % of the tempo
+  const expected = [0, 2.5, 2.5 + rit, 4.5 + rit]
+  t.passes.forEach((time, i) => expect(time).toBeCloseTo(expected[i], 3))
+  expect(t.end).toBeCloseTo(6.5 + rit, 3)
+  expect(t.upper[3].slice(1)).toEqual([1.5, 2.5])
+  expect(t.lower[0]).toEqual([0, 2.5])
+  // In the rit. each beat is longer than the one before; the metronome follows.
+  const bar2 = t.steps.filter((s) => s >= 2.5 - 1e-3 && s < expected[2] - 1e-3)
+  const gaps = [...bar2.slice(1), t.passes[2]].map((s, i) => s - bar2[i])
+  expect(gaps.every((g, i) => i === 0 || g > gaps[i - 1])).toBe(true)
+  expect(gaps[0]).toBeGreaterThan(0.5)
+  expect(t.clicks.filter((c) => c >= 2.5 - 1e-3 && c < expected[2] - 1e-3)).toEqual(bar2)
+
+  // Bar 3, a tempo: a trill on E (G major, so with F♯), a turn on G, a mordent on A.
+  const bar3 = t.upper.filter(([, time]) => time >= expected[2] - 1e-3 && time < expected[3] - 1e-3)
+  expect(bar3.map(([midi]) => midi)).toEqual([76, 78, 76, 78, 76, 78, 76, 78, 76, 78, 76, 81, 79, 78, 79, 81, 79, 81])
+  expect(bar3[10][2]).toBeCloseTo(t.passes[2] + 1, 6) // the trill fills its half note
+  expect(bar3[11][1]).toBeCloseTo(t.passes[2] + 1, 6)
+  expect(bar3[12][1] - bar3[11][1]).toBeCloseTo(0.09, 6)
+  expect(bar3[14][2]).toBeCloseTo(t.passes[2] + 1.5, 6) // the turn ends on the main note, held
+
+  // The player sends what the timeline says, at those times.
+  await record(page)
+  await page.getByLabel('Speed', { exact: true }).fill('200')
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await expect.poll(() => time(page), { timeout: 10_000 }).toBeGreaterThan(expected[3] + 0.2)
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
+  const notes = (await sent(page)).filter((n) => n.midi > 60)
+  const timeline = t.upper.filter(([, time]) => time < expected[3] + 0.1)
+  expect(notes.slice(0, timeline.length).map((n) => [n.midi, round(n.on), round(n.off)])).toEqual(timeline.map(([m, on, off]) => [m, round(on), round(off)]))
+  expect(errors).toEqual([])
+})
+
+test('playback: a MuseScore 4 rit. line slows the last bar', async ({ page }) => {
+  const errors = await open(page, 'ode-rit.mscx', 'Ode to Joy (test)')
+  const passes = await page.evaluate(() => window.__piano.timeline!.passes.map((p) => [p.number, p.time, p.end]))
+  expect(passes.map(([n]) => n)).toEqual([1, 2, 3, 1, 2, 4])
+  expect(passes.slice(0, 5).every(([, time, end]) => Math.abs(end - time - 2) < 1e-6)).toBe(true) // the repeat is untouched
+  const [, time, end] = passes[5]
+  expect(end - time).toBeCloseTo(2 * Math.log(1 / 0.7) / 0.3, 3) // ♩ = 120 slowing to 84
+  expect(errors).toEqual([])
+})

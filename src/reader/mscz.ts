@@ -2,7 +2,7 @@
 // MusicXML, so a score downloaded from musescore.com in MuseScore format opens like any other.
 // Our own reader of the format (MuseScore's own importer is GPL). It covers what a piano score
 // needs: parts and staves, voices, chords, rests, grace notes, tuplets, ties, slurs, beams,
-// clefs, keys, times, tempo, dynamics, text, ottavas, pedal, hairpins, repeats, voltas and
+// clefs, keys, times, tempo, rit./accel. lines, dynamics, text, ottavas, pedal, hairpins, repeats, voltas and
 // jumps. Files from MuseScore 2, 3 and 4 are read; layout, lyrics and chord symbols are dropped.
 // Uses the browser's DOMParser and DecompressionStream (no DOM rendering).
 
@@ -82,6 +82,7 @@ const GRACE: Record<string, 'slash' | 'plain'> = { acciaccatura: 'slash', appogg
 const SHARP_TPC = [14, 21, 16, 23, 18, 13, 20, 15, 22, 17, 24, 19]
 const OTTAVA: Record<string, number> = { '8va': 12, '8vb': -12, '15ma': 24, '15mb': -24, '22ma': 36, '22mb': -36, 0: 12, 1: -12, 2: 24, 3: -24, 4: 36, 5: -36 }
 const DYNAMICS = new Set(['p', 'pp', 'ppp', 'pppp', 'ppppp', 'pppppp', 'f', 'ff', 'fff', 'ffff', 'fffff', 'ffffff', 'mp', 'mf', 'sf', 'sfp', 'sfpp', 'fp', 'rf', 'rfz', 'sfz', 'sffz', 'fz', 'n', 'pf', 'sfzp'])
+const TEMPO_CHANGE: Record<string, string> = { accelerando: 'accel.', allargando: 'allarg.', calando: 'calando', lentando: 'lentando', morendo: 'morendo', precipitando: 'precipitando', rallentando: 'rall.', ritardando: 'rit.', smorzando: 'smorz.', sostenuto: 'sost.', stringendo: 'string.' }
 const BAR_STYLE: Record<string, string> = { double: 'light-light', end: 'light-heavy', final: 'light-heavy', 'reverse-end': 'heavy-light', heavy: 'heavy', 'double-heavy': 'heavy-heavy', dashed: 'dashed', dotted: 'dotted' }
 
 // ---------------- small XML helpers ----------------
@@ -382,6 +383,9 @@ function convert(source: string): string {
       if (Number(sub) > 1) continue // "cresc." lines: drawn as text in MuseScore, skipped here
       place(sp.staff, sp.start, { inner: `<wedge type="${Number(sub) % 2 ? 'diminuendo' : 'crescendo'}"/>`, placement: 'below' }, false)
       place(sp.staff, sp.end, { inner: '<wedge type="stop"/>', placement: 'below' }, true)
+    } else if (sp.kind === 'GradualTempoChange') { // MuseScore 4's rit./accel. lines: the words, which playback reads
+      const label = words(kid(sp.el, 'beginText')) || TEMPO_CHANGE[text(sp.el, 'tempoChangeType') || 'rallentando'] || 'rit.'
+      place(sp.staff, sp.start, { inner: `<words>${esc(label)}</words>`, placement: 'above' }, false)
     } else if (sp.kind === 'Volta') {
       const numbers = text(sp.el, 'endings').replace(/\s/g, '') || '1'
       const first = barAt(sp.start)

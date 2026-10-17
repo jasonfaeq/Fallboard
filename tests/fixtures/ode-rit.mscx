@@ -1,0 +1,416 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<museScore version="4.70">
+  <programVersion>4.7.3</programVersion>
+  <programRevision>cf9860c</programRevision>
+  <Score>
+    <eid>Avdy/mM4w7E_spGEvt1AbNJ</eid>
+    <Division>480</Division>
+    <showInvisible>1</showInvisible>
+    <showUnprintable>1</showUnprintable>
+    <showFrames>1</showFrames>
+    <showMargins>0</showMargins>
+    <open>1</open>
+    <metaTag name="arranger"></metaTag>
+    <metaTag name="composer">Ludwig van Beethoven</metaTag>
+    <metaTag name="copyright">public-domain composition; own arrangement for tests</metaTag>
+    <metaTag name="creationDate">2026-10-16</metaTag>
+    <metaTag name="lyricist"></metaTag>
+    <metaTag name="movementNumber"></metaTag>
+    <metaTag name="movementTitle"></metaTag>
+    <metaTag name="originalFormat">musicxml</metaTag>
+    <metaTag name="platform">Microsoft Windows</metaTag>
+    <metaTag name="source"></metaTag>
+    <metaTag name="translator"></metaTag>
+    <metaTag name="workNumber"></metaTag>
+    <metaTag name="workTitle">Ode to Joy (test)</metaTag>
+    <Part id="1">
+      <Staff>
+        <eid>lFzFmHCnsvL_lu42GK8cq0P</eid>
+        <StaffType group="pitched">
+          <name>stdNormal</name>
+          </StaffType>
+        <bracket type="1" span="2" col="1" visible="1"/>
+        <barLineSpan>1</barLineSpan>
+        </Staff>
+      <Staff>
+        <eid>qQGU3AxJj2I_JwPM4pVJimH</eid>
+        <StaffType group="pitched">
+          <name>stdNormal</name>
+          </StaffType>
+        </Staff>
+      <trackName>Piano</trackName>
+      <Instrument id="piano">
+        <longName>Piano</longName>
+        <trackName></trackName>
+        <instrumentId>keyboard.piano</instrumentId>
+        <Articulation>
+          <velocity>100</velocity>
+          <gateTime>100</gateTime>
+          </Articulation>
+        <Articulation name="staccatissimo">
+          <velocity>100</velocity>
+          <gateTime>33</gateTime>
+          </Articulation>
+        <Articulation name="staccato">
+          <velocity>100</velocity>
+          <gateTime>50</gateTime>
+          </Articulation>
+        <Articulation name="portato">
+          <velocity>100</velocity>
+          <gateTime>67</gateTime>
+          </Articulation>
+        <Articulation name="tenuto">
+          <velocity>100</velocity>
+          <gateTime>100</gateTime>
+          </Articulation>
+        <Articulation name="marcato">
+          <velocity>120</velocity>
+          <gateTime>67</gateTime>
+          </Articulation>
+        <Articulation name="sforzato">
+          <velocity>150</velocity>
+          <gateTime>100</gateTime>
+          </Articulation>
+        <Articulation name="sforzatoStaccato">
+          <velocity>150</velocity>
+          <gateTime>50</gateTime>
+          </Articulation>
+        <Articulation name="marcatoStaccato">
+          <velocity>120</velocity>
+          <gateTime>50</gateTime>
+          </Articulation>
+        <Articulation name="marcatoTenuto">
+          <velocity>120</velocity>
+          <gateTime>100</gateTime>
+          </Articulation>
+        <Channel>
+          <program value="0"/>
+          <controller ctrl="10" value="63"/>
+          <synti>Fluid</synti>
+          </Channel>
+        </Instrument>
+      </Part>
+    <Staff id="1">
+      <VBox>
+        <height>10</height>
+        <eid>+GSZlNUUpJJ_jP43QOIWkWN</eid>
+        <Text>
+          <eid>cEuAm6P2RGM_j4uo0LCwoXC</eid>
+          <style>title</style>
+          <text>Ode to Joy (test)</text>
+          </Text>
+        <Text>
+          <eid>rYbfJ6NB3LE_TiK2x4fdHj</eid>
+          <style>composer</style>
+          <text>Ludwig van Beethoven</text>
+          </Text>
+        </VBox>
+      <Measure>
+        <eid>JtA+kKUW7yF_2uamXc+c8kO</eid>
+        <startRepeat/>
+        <voice>
+          <Clef>
+            <concertClefType>G</concertClefType>
+            <transposingClefType>G</transposingClefType>
+            <isHeader>1</isHeader>
+            <eid>ftKW24BZiAF_NoJ54DFgHoM</eid>
+            </Clef>
+          <TimeSig>
+            <eid>BrrK/6tyeVJ_3YFSHz/FJcF</eid>
+            <sigN>4</sigN>
+            <sigD>4</sigD>
+            </TimeSig>
+          <Tempo>
+            <tempo>2</tempo>
+            <followText>1</followText>
+            <eid>iT2WTJrcPeJ_VB02y2FVobN</eid>
+            <text><sym>metNoteQuarterUp</sym> = 120</text>
+            </Tempo>
+          <Chord>
+            <eid>t2iNHhOnQzO_kYKycMbl6xH</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>ECk8urnshLG_2Ary9TeXhAJ</eid>
+              <pitch>64</pitch>
+              <tpc>18</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>BA8GoEuy18E_LYiqttvEarF</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>6RWTPCvKW3E_9yrXgZp1CJI</eid>
+              <pitch>64</pitch>
+              <tpc>18</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>SDRr1H0Dql_U6rzw4s6L1M</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>3Mkns+i6yTG_e9zJfK2zKdI</eid>
+              <pitch>65</pitch>
+              <tpc>13</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>iuux84PU2iK_snNXw4kOW/B</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>/I75WAd6s+M_VggwYGgu6KH</eid>
+              <pitch>67</pitch>
+              <tpc>15</tpc>
+              </Note>
+            </Chord>
+          </voice>
+        </Measure>
+      <Measure>
+        <eid>ZUHkTkEQfBO_4LJnbf5uhhF</eid>
+        <voice>
+          <Chord>
+            <eid>NAN/mqJ7eTH_EQs/I8YL3jD</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>kdOpbRm09s_GYQAcBcmVtB</eid>
+              <pitch>67</pitch>
+              <tpc>15</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>dqKx0mYXrlL_nmdIgF/JGLM</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>9lttX8u7NHP_kG9i8CTBQWN</eid>
+              <pitch>65</pitch>
+              <tpc>13</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>q+elL3UFFwH_5d+l8UX+KFH</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>/IVYXcVvwoH_8ToAolmGc2L</eid>
+              <pitch>64</pitch>
+              <tpc>18</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>b9piIptbAWI_Y9zTd6n07FK</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>oMtlxW+nL5N_GVWznPJt9+I</eid>
+              <pitch>62</pitch>
+              <tpc>16</tpc>
+              </Note>
+            </Chord>
+          </voice>
+        </Measure>
+      <Measure>
+        <eid>r0PyvkJIBMH_cwzs2JgzTnK</eid>
+        <endRepeat>2</endRepeat>
+        <voice>
+          <Spanner type="Volta">
+            <Volta>
+              <endHookType>1</endHookType>
+              <beginText>1</beginText>
+              <eid>PiEvLj/d3FC_9/M748ReB4C</eid>
+              <endings>1</endings>
+              </Volta>
+            <next>
+              <location>
+                <measures>1</measures>
+                </location>
+              </next>
+            </Spanner>
+          <Chord>
+            <eid>Vok1zqhtZaL_JztGij6/ipD</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>u4hwnkqO5cN_eZSlw3SRV8C</eid>
+              <pitch>60</pitch>
+              <tpc>14</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>DKr+hV9ctXK_V05qPoNYcgF</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>nmmw/MnUZVJ_lIvl58VIBGC</eid>
+              <pitch>60</pitch>
+              <tpc>14</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>z4tPJzpE1+O_EYbge1Ij8dK</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>XXvV839VIIJ_jPmR8k6xlZE</eid>
+              <pitch>62</pitch>
+              <tpc>16</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>F1xiK/RNAqJ_yiLF2RWY7uK</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>4OOeQenQBON_8gvZlHzLOqK</eid>
+              <pitch>64</pitch>
+              <tpc>18</tpc>
+              </Note>
+            </Chord>
+          </voice>
+        </Measure>
+      <Measure>
+        <eid>/Zrv+OqiNnI_L2w0MN3LExC</eid>
+        <voice>
+          <Spanner type="GradualTempoChange">
+            <GradualTempoChange>
+              <tempoChangeType>ritardando</tempoChangeType>
+              </GradualTempoChange>
+            <next>
+              <location>
+                <fractions>1/1</fractions>
+                </location>
+              </next>
+            </Spanner>
+          <Spanner type="Volta">
+            <prev>
+              <location>
+                <measures>-1</measures>
+                </location>
+              </prev>
+            </Spanner>
+          <Spanner type="Volta">
+            <Volta>
+              <beginText>2</beginText>
+              <eid>qgMJWizamqP_b9xtYDFtATM</eid>
+              <endings>2</endings>
+              </Volta>
+            <next>
+              <location>
+                <fractions>1/1</fractions>
+                </location>
+              </next>
+            </Spanner>
+          <Chord>
+            <eid>XzHMn54i2ZG_YGlndd7EcFI</eid>
+            <dots>1</dots>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>opWX6CQwBRI_ulD3+zMrCIC</eid>
+              <pitch>64</pitch>
+              <tpc>18</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>UqgD5iCwNzH_UQqjoXxDCnI</eid>
+            <durationType>eighth</durationType>
+            <Note>
+              <eid>eAdF+5rv10J_ibkgRWrEY9E</eid>
+              <pitch>62</pitch>
+              <tpc>16</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>tytC8QyQCbD_SBtLMcILglE</eid>
+            <durationType>half</durationType>
+            <Note>
+              <eid>hpUIoEGI8rB_FXbFPUBMCxO</eid>
+              <pitch>62</pitch>
+              <tpc>16</tpc>
+              </Note>
+            </Chord>
+          <Spanner type="Volta">
+            <prev>
+              <location>
+                <fractions>-1/1</fractions>
+                </location>
+              </prev>
+            </Spanner>
+          <BarLine>
+            <subtype>end</subtype>
+            <eid>gD7rfT6WW8H_U/Hmslv84mI</eid>
+            </BarLine>
+          </voice>
+        </Measure>
+      </Staff>
+    <Staff id="2">
+      <Measure>
+        <voice>
+          <Clef>
+            <concertClefType>F</concertClefType>
+            <transposingClefType>F</transposingClefType>
+            <isHeader>1</isHeader>
+            <eid>XX1cIajehKO_fhFG41Pl2OF</eid>
+            </Clef>
+          <TimeSig>
+            <eid>f0Jfw4c2+gJ_z5txkG3IFO</eid>
+            <sigN>4</sigN>
+            <sigD>4</sigD>
+            </TimeSig>
+          <Chord>
+            <eid>XfbbnNsaJSH_xYpcMfrSVYB</eid>
+            <durationType>whole</durationType>
+            <Note>
+              <eid>xEeb0oTnnYJ_DE6HtuqwDKK</eid>
+              <pitch>48</pitch>
+              <tpc>14</tpc>
+              </Note>
+            </Chord>
+          </voice>
+        </Measure>
+      <Measure>
+        <voice>
+          <Chord>
+            <eid>j42Q0fZHfVD_cBLnMVa7ylJ</eid>
+            <durationType>whole</durationType>
+            <Note>
+              <eid>8H8fWUpfm9J_8BMwMQPRzxP</eid>
+              <pitch>43</pitch>
+              <tpc>15</tpc>
+              </Note>
+            </Chord>
+          </voice>
+        </Measure>
+      <Measure>
+        <voice>
+          <Chord>
+            <eid>f2ULjmsIhFF_bjEaLckJ5LH</eid>
+            <durationType>half</durationType>
+            <Note>
+              <eid>s1A5Do8k36L_EhM87P5ZZyF</eid>
+              <pitch>48</pitch>
+              <tpc>14</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>VtyzRqizjqC_xsRimS9My2N</eid>
+            <durationType>half</durationType>
+            <Note>
+              <eid>ASzcgnyx19D_PnmSPAHE1aM</eid>
+              <pitch>43</pitch>
+              <tpc>15</tpc>
+              </Note>
+            </Chord>
+          </voice>
+        </Measure>
+      <Measure>
+        <voice>
+          <Chord>
+            <eid>ZzMOXvG5/PG_v/pXpJbUIxL</eid>
+            <durationType>whole</durationType>
+            <Note>
+              <eid>KrXZIQ9yf8D_1Lmi6ky6Be</eid>
+              <pitch>43</pitch>
+              <tpc>15</tpc>
+              </Note>
+            </Chord>
+          <BarLine>
+            <subtype>end</subtype>
+            <eid>jf5Zw5IXe2C_1T+fa9q+XqD</eid>
+            </BarLine>
+          </voice>
+        </Measure>
+      </Staff>
+    </Score>
+  </museScore>

@@ -36,8 +36,10 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
       range from pp to ff right on the sampled piano?*
 - [x] **Pedal marks** in playback (sustain): lines, Ped./✱ signs and changes hold notes until
       the pedal lifts — 2026-10-17 (D-27). *Needs Jason: does the pedalling sound natural?*
-- [ ] 🔀 **Ornaments and timing marks**: trills, turns, fermatas, ritardando. Grace notes are
-      played quickly on the beat.
+- [x] **Ornaments and timing marks**: fermatas hold, rit./rall./accel. change the tempo
+      gradually until "a tempo", trills, turns and mordents play their notes; grace notes are
+      still played quickly on the beat — 2026-10-17 (D-29). *Needs Jason: how long fermatas
+      hold, how much rit. slows, and the ornament speed.*
 - [ ] **Big scores**: measure render time on a long score; render incrementally if slow.
 - [x] **`.mscz` import** (MuseScore's own format, versions 2–4), converted to MusicXML in the
       browser by our own reader — 2026-10-16 (D-25). *Needs Jason: try a few real musescore.com

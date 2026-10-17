@@ -68,8 +68,21 @@ Built from OSMD's parsed `MusicSheet`, not from the drawing. `MusicPartManager.g
 walks every cursor stop in playing order, through repeats and 1st/2nd endings. Everything is
 first placed by its **played position** (whole notes from the start in playing order, so a
 repeated bar adds its length again); then a `Clock` turns positions into score seconds,
-piecewise linear between the steps, with each step's tempo holding until the next. Notes,
-steps, passes, clicks and pedal marks all go through the same clock. For each stop:
+piecewise linear between breakpoints, with each step's tempo holding until the next. Notes,
+steps, passes, clicks and pedal marks all go through the same clock, so the playhead, sheet,
+keys and scrubber follow fermatas and ritardandos too. The clock's rate at a position is
+`240 / bpm ÷ tempo factor × fermata stretch`:
+
+- **rit./accel. (D-29):** words in OSMD's `TempoExpressions` (and unrecognised staff words)
+  matching rit., rall., allarg., calando… or accel., string… start a linear change of the
+  tempo factor to ×0.7 (or ×1.3) by the next tempo mark; "a tempo", "tempo I", a new metronome
+  tempo or a jump back for a repeat set it to 1. Without one it runs to the end. The clock
+  steps through each change in 1/64ths of a whole note.
+- **Fermatas (D-29):** a fermata (`ArticulationEnum.fermata`/`invertedfermata`, on a note or
+  rest) stretches the part of its note after the last step before the note ends: that part
+  lasts twice as long, at most 1.5 score seconds longer. Notes sounding across it last longer.
+
+For each stop:
 
 - **Pass:** a new measure, or a jump back into the same one, starts a new `Pass` (measure
   index, printed number, time, end, tempo, counted beats). A repeated bar has one pass per
@@ -79,7 +92,12 @@ steps, passes, clicks and pedal marks all go through the same clock. For each st
 - **Sounds:** one per note head, with ties merged into one sound; pitch =
   `note.Pitch.getHalfTone()` + 12 + transposition. OSMD rewrites `note.halfTone` while a
   transposed sheet is drawn, so the written `Pitch` is used. Grace notes play 70 ms each on
-  the beat, delaying their main note. Rests, cue notes and pitches outside A0–C8 are skipped.
+  the beat, delaying their main note. **Ornaments (D-29)** (`OrnamentContainer`, on a chord's
+  top note) become several sounds: a trill alternates with the note above, ~0.09 s each,
+  ending on the main note; a turn plays above–main–below–main (inverted: below first) at the
+  start, a delayed turn at the end; a mordent main–below–main, an inverted mordent
+  main–above–main. Neighbours follow the key signature (`KeyInstruction`) or the ornament's
+  own accidental. The printed note stays one mark. Rests, cue notes and pitches outside A0–C8 are skipped.
   Loudness comes from the dynamics (below).
 - **Dynamics (D-28):** `InstantaneousDynamic` marks (ppp–fff as velocities 32–118, mf = 78),
   sudden accents (sf, sfz, fz, rf… ×1.2–1.4 for the notes at the mark; fp/sfp: forte, then p)

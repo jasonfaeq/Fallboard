@@ -237,3 +237,17 @@ on the upper staff, so the left hand would otherwise never change. **A hairpin**
 from its start to the mark that follows it, if that mark comes within a bar of the hairpin's
 end and goes the right way; otherwise it moves one step (14) by its own end and stays there.
 *Simple rules that match how the marks are written; the numbers need Jason's ear.*
+
+**D-29 · 2026-10-17 · How fermatas, ritardando and ornaments are played** — All of it goes
+through the timeline's clock, so sheet, keys, playhead and scrubber stay together.
+**rit., rall., allarg.** (as words or a MuseScore 4 line) slow the tempo linearly to 70 % by
+the next tempo mark; **accel.** speeds it to 130 %; **a tempo**, tempo I, a new metronome
+mark or a jump back for a repeat restore it; with none of those it runs to the end. A
+MusicXML or MuseScore line's own end is not used (OSMD does not keep it). **A fermata**
+doubles the last part of its note (from the last step before the note ends), adding at most
+1.5 s. **Trills** alternate with the note above at about 0.09 s per note and end on the main
+note; **turns, inverted and delayed turns, mordents** play their four or three notes at that
+speed and hold the last. Neighbour notes follow the key signature or the ornament's printed
+accidental (not earlier accidentals in the bar). Times are score seconds, so ornaments slow
+down with the speed slider. *Plain rules that are easy to hear and change; every number is a
+guess for Jason to judge.*

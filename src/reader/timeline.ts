@@ -5,8 +5,9 @@
 //
 // It is built in two steps. First everything is placed by its played position: whole notes from
 // the start in playing order (a repeated bar adds its length again). Then a clock turns positions
-// into score seconds, so every note, step, pass and click follows the same tempo.
-import { ArticulationEnum } from 'opensheetmusicdisplay'
+// into score seconds, so every note, step, pass and click follows the same tempo, including
+// fermatas and ritardandos.
+import { AccidentalEnum, ArticulationEnum, KeyInstruction, OrnamentEnum, Pitch } from 'opensheetmusicdisplay'
 import type { Fraction, MusicSheet, MusicPartManagerIterator, Note, SourceStaffEntry, VoiceEntry } from 'opensheetmusicdisplay'
 import { PIANO_HIGH, PIANO_LOW, midiFromHalfTone } from '../engine/notes'
 
@@ -39,6 +40,19 @@ const LEVELS: Record<string, number> = {
 const SUDDEN: Record<string, number> = { sf: 1.3, sfz: 1.3, sffz: 1.4, fz: 1.3, rf: 1.2, rfz: 1.2 }
 /** loud, then soft at once: the notes at the mark play forte, then this level holds */
 const FORTE_PIANO: Record<string, string> = { fp: 'p', sfp: 'p', sfpp: 'pp' }
+/** A fermata doubles the held part of its note (from the last step before its end), adding at
+ *  most this many score seconds. */
+const FERMATA_MAX = 1.5
+/** rit./rall. slow to this share of the tempo by the next tempo mark; accel. speeds up to the other */
+const RIT = 0.7
+const ACCEL = 1.3
+const SLOWER = /(^|[^a-z])(rit|rall|allarg|slent|calando)/i
+const FASTER = /(^|[^a-z])(accel|string)/i
+const RESUME = /(^|[^a-z])(a tempo|tempo (i|1|primo)|in tempo)([^a-z]|$)/i
+/** each note of a trill, turn or mordent, in score seconds (shorter if the note is short) */
+const ORNAMENT_NOTE = 0.09
+/** C D E F G A B as OSMD's NoteEnum values */
+const LETTERS = [0, 2, 4, 5, 7, 9, 11]
 /** a hairpin with no mark after it changes the loudness by this much */
 const HAIRPIN_STEP = 14
 /** the lower staves play a little softer than the top one, as before dynamics were read */
@@ -49,7 +63,11 @@ type MultiExpression = MusicSheet['SourceMeasures'][number]['StaffLinkedExpressi
 const CRESCENDO = 0
 
 /** Positions are played whole notes. `delay` is in score seconds after the position (grace notes). */
-interface RawSound { midi: number; staff: number; at: number; until: number; delay: number; grace: boolean; accent: number }
+interface RawSound { midi: number; staff: number; at: number; until: number; delay: number; grace: boolean; accent: number; ornament?: Ornament }
+/** a trill, turn or mordent on a note, with its neighbours in the key */
+interface Ornament { kind: OrnamentEnum; upper: number; lower: number }
+/** what the voice entries add: sounds, lit notes, fermatas (played positions); the key signatures they need */
+interface Collect { sounds: RawSound[]; marks: RawMark[]; fermatas: { at: number; until: number }[]; keys: number[][] }
 /** a dynamic mark in playing order: a level, a sudden accent, or a hairpin */
 interface Dynamic { at: number; staff: number; level?: number; sudden?: number; after?: number; hairpin?: { louder: boolean; until: number } }
 interface RawMark { note: Note; entry: SourceStaffEntry; measure: number; staff: number; at: number; until: number; delay: number; grace: boolean }
@@ -72,7 +90,7 @@ class Clock {
   private at: number[] = []
   private time: number[] = []
   private rate: number[] = []
-  /** `rateAt(p)` = seconds per whole note just after `p`; it must be constant between breakpoints */
+  /** `rateAt(p)` = seconds per whole note at `p`, taken in the middle of each piece between breakpoints */
   constructor(breakpoints: number[], rateAt: (p: number) => number) {
     const points = [...new Set(breakpoints)].sort((a, b) => a - b)
     let t = 0
@@ -80,7 +98,7 @@ class Clock {
       if (i > 0) t += (p - points[i - 1]) * this.rate[i - 1]
       this.at.push(p)
       this.time.push(t)
-      this.rate.push(rateAt(p))
+      this.rate.push(rateAt((p + (points[i + 1] ?? p + 1)) / 2))
     })
   }
   seconds(p: number) {
@@ -102,6 +120,7 @@ function lastAtOrBefore(values: number[], x: number) {
 export function buildTimeline(sheet: MusicSheet, transpose = 0): Timeline {
   const raw: RawSound[] = []
   const rawMarks: RawMark[] = []
+  const collect: Collect = { sounds: raw, marks: rawMarks, fermatas: [], keys: keySignatures(sheet) }
   const rawPasses: RawPass[] = []
   const rawSteps: RawStep[] = []
   const start = sheet.HasBPMInfo ? sheet.DefaultStartTempoInBpm || 100 : 100
@@ -131,16 +150,17 @@ export function buildTimeline(sheet: MusicSheet, transpose = 0): Timeline {
     }
     previous = { at: printed, measureEnd: measure.AbsoluteTimestamp.RealValue + measure.Duration.RealValue }
     rawSteps.push({ at, bpm, measure: index, pass: rawPasses.length - 1, printed: it.CurrentSourceTimestamp.clone() })
-    addNotes(it.CurrentVoiceEntries, at, index, transpose, raw, rawMarks)
+    addNotes(it.CurrentVoiceEntries, at, index, transpose, collect)
   }
 
-  // The tempo: each step's tempo holds until the next step.
+  // The tempo: each step's tempo holds until the next step, shaped by rit./accel. and fermatas.
   const stepAts = rawSteps.map((s) => s.at)
   const lastAt = raw.reduce((max, s) => Math.max(max, s.until), rawPasses.at(-1)?.until ?? 0)
-  const clock = new Clock([0, ...stepAts, lastAt], (p) => {
-    const i = lastAtOrBefore(stepAts, p)
-    return wholeSeconds(rawSteps[Math.max(0, i)]?.bpm ?? start)
-  })
+  const bpmAt = (p: number) => rawSteps[Math.max(0, lastAtOrBefore(stepAts, p))]?.bpm ?? start
+  const shape = tempoShape(tempoMarksFor(sheet, rawPasses, rawSteps), lastAt)
+  const holds = fermataHolds(collect.fermatas, stepAts, (p) => wholeSeconds(bpmAt(p)) / shape.factor(p))
+  const clock = new Clock([0, ...stepAts, lastAt, ...shape.breakpoints, ...holds.flatMap((h) => [h.from, h.until])], (p) =>
+    wholeSeconds(bpmAt(p)) / shape.factor(p) * holds.reduce((m, h) => p > h.from && p < h.until ? Math.max(m, h.stretch) : m, 1))
   const seconds = (p: number) => clock.seconds(p)
 
   const sounds: Sound[] = raw.map((s) => {
@@ -150,6 +170,7 @@ export function buildTimeline(sheet: MusicSheet, transpose = 0): Timeline {
     return { midi: s.midi, time, end, release: end, staff: s.staff, velocity: 0 }
   })
   setVelocities(sheet, raw, sounds, dynamicsFor(sheet, rawPasses))
+  const played = sounds.flatMap((s, i) => raw[i].ornament ? ornamentNotes(s, raw[i].ornament!) : [s])
   const marks: Mark[] = rawMarks.map((m) => {
     const time = seconds(m.at) + m.delay
     return { note: m.note, entry: m.entry, measure: m.measure, staff: m.staff, time, end: m.grace ? time + GRACE : seconds(m.until) }
@@ -157,23 +178,29 @@ export function buildTimeline(sheet: MusicSheet, transpose = 0): Timeline {
   const passes: Pass[] = rawPasses.map((p) => ({ measure: p.measure, number: p.number, time: seconds(p.at), end: seconds(p.until),
     bpm: p.bpm, beats: p.beats, beatSeconds: p.beat * wholeSeconds(p.bpm) }))
   const steps: Step[] = rawSteps.map((s) => ({ time: seconds(s.at), measure: s.measure, pass: s.pass, at: s.printed }))
-  const end = sounds.reduce((max, s) => Math.max(max, s.end), passes.at(-1)?.end ?? 0)
+  const end = played.reduce((max, s) => Math.max(max, s.end), passes.at(-1)?.end ?? 0)
   const pedals = pedalsFor(sheet, rawPasses, lastAt).map(([from, to]) => ({ time: seconds(from), end: Math.min(end, seconds(to)) }))
-  sounds.sort((a, b) => a.time - b.time || a.midi - b.midi)
+  played.sort((a, b) => a.time - b.time || a.midi - b.midi)
   marks.sort((a, b) => a.time - b.time)
-  setReleases(sounds, pedals)
-  const midis = sounds.map((s) => s.midi)
+  setReleases(played, pedals)
+  const midis = played.map((s) => s.midi)
   return {
-    sounds, marks, passes, steps, pedals, clicks: clicksFor(sheet, rawPasses, seconds), staves: staffNames(sheet), end, bpm: passes[0]?.bpm ?? start,
+    sounds: played, marks, passes, steps, pedals, clicks: clicksFor(sheet, rawPasses, seconds), staves: staffNames(sheet), end, bpm: passes[0]?.bpm ?? start,
     low: midis.length ? Math.min(...midis) : 60, high: midis.length ? Math.max(...midis) : 72,
   }
 }
 
-function addNotes(entries: VoiceEntry[], at: number, measure: number, transpose: number, sounds: RawSound[], marks: RawMark[]) {
+function addNotes(entries: VoiceEntry[], at: number, measure: number, transpose: number, { sounds, marks, fermatas, keys }: Collect) {
   // Grace notes are played on the beat, quickly; their main note starts after them.
   const graces = new Map<unknown, number>()
   for (const entry of entries) {
     const staff = entry.ParentSourceStaffEntry.ParentStaff.idInMusicSheet
+    if (!entry.IsGrace && entry.Articulations.some((a) => a.articulationEnum === ArticulationEnum.fermata || a.articulationEnum === ArticulationEnum.invertedfermata)) {
+      fermatas.push({ at, until: at + Math.max(0, ...entry.Notes.map((n) => n.Length.RealValue)) })
+    }
+    // An ornament on a chord is played on its top note.
+    const ornament = entry.IsGrace ? undefined : entry.OrnamentContainer
+    const top = ornament && entry.Notes.filter((n) => n.Pitch && !n.isRest()).reduce<Note | undefined>((a, n) => !a || n.Pitch.getHalfTone() > a.Pitch.getHalfTone() ? n : a, undefined)
     const voice = entry.ParentVoice
     let offset = 0
     let accent = 1
@@ -198,9 +225,131 @@ function addNotes(entries: VoiceEntry[], at: number, measure: number, transpose:
       const midi = midiFromHalfTone(note.Pitch.getHalfTone()) + transpose
       if (midi < PIANO_LOW || midi > PIANO_HIGH) continue
       const total = tie ? tie.Notes.reduce((sum, n) => sum + n.Length.RealValue, 0) : length
-      sounds.push({ midi, staff, at, until: grace ? at : at + total, delay: offset, grace, accent })
+      const fifths = keys[measure]?.[staff] ?? 0
+      sounds.push({ midi, staff, at, until: grace ? at : at + total, delay: offset, grace, accent, ornament: ornament && note === top ? {
+        kind: ornament.GetOrnament,
+        upper: neighbour(note.Pitch, midi, 1, fifths, ornament.AccidentalAbove),
+        lower: neighbour(note.Pitch, midi, -1, fifths, ornament.AccidentalBelow),
+      } : undefined })
     }
   }
+}
+
+/** The key signature (sharps > 0, flats < 0) of every measure and staff, as printed. */
+function keySignatures(sheet: MusicSheet): number[][] {
+  let current = sheet.Staves.map(() => 0)
+  return sheet.SourceMeasures.map((measure) => {
+    current = current.map((fifths, staff) => {
+      const key = measure.FirstInstructionsStaffEntries[staff]?.Instructions.find((i) => i instanceof KeyInstruction)
+      return key instanceof KeyInstruction ? key.Key : fifths
+    })
+    return current
+  })
+}
+
+/** The note a step above or below in the key (or with the ornament's own accidental). */
+function neighbour(pitch: Pitch, midi: number, step: 1 | -1, fifths: number, accidental: AccidentalEnum) {
+  const letter = LETTERS.indexOf(pitch.FundamentalNote)
+  const next = (letter + step + 7) % 7
+  const distance = step > 0 ? (LETTERS[next] - LETTERS[letter] + 12) % 12 : -((LETTERS[letter] - LETTERS[next] + 12) % 12)
+  const order = fifths > 0 ? [3, 0, 4, 1, 5, 2, 6] : [6, 2, 5, 1, 4, 0, 3] // F C G D A E B sharpened, B E A D G C F flattened
+  const fromKey = order.slice(0, Math.abs(fifths)).includes(next) ? Math.sign(fifths) : 0
+  const alter = accidental === AccidentalEnum.NONE ? fromKey : Pitch.HalfTonesFromAccidental(accidental)
+  return midi - pitch.AccidentalHalfTones + distance + alter
+}
+
+/** A trill, turn or mordent as the notes it plays (D-29). Every note keeps the main note's velocity. */
+function ornamentNotes(s: Sound, { kind, upper, lower }: Ornament): Sound[] {
+  const length = s.end - s.time
+  const main = s.midi
+  /** notes of length `d` from `from` seconds into the note, the last one held to the end */
+  const run = (midis: number[], d: number, from = 0) => midis.map((midi, i) => {
+    const time = s.time + from + i * d
+    const end = i === midis.length - 1 ? s.end : time + d
+    return { ...s, midi, time, end, release: end }
+  })
+  switch (kind) {
+    case OrnamentEnum.Trill: {
+      const count = Math.max(3, Math.floor(length / ORNAMENT_NOTE)) | 1 // odd, so it ends on the main note
+      return run(Array.from({ length: count }, (_, i) => i % 2 ? upper : main), length / count)
+    }
+    case OrnamentEnum.Turn: return run([upper, main, lower, main], Math.min(ORNAMENT_NOTE, length / 4))
+    case OrnamentEnum.InvertedTurn: return run([lower, main, upper, main], Math.min(ORNAMENT_NOTE, length / 4))
+    case OrnamentEnum.DelayedTurn: case OrnamentEnum.DelayedInvertedTurn: {
+      const d = Math.min(ORNAMENT_NOTE, length / 5)
+      const turn = kind === OrnamentEnum.DelayedTurn ? [upper, main, lower, main] : [lower, main, upper, main]
+      return [{ ...s, end: s.end - 4 * d, release: s.end - 4 * d }, ...run(turn, d, length - 4 * d)]
+    }
+    case OrnamentEnum.Mordent: return run([main, lower, main], Math.min(ORNAMENT_NOTE, length / 3))
+    case OrnamentEnum.InvertedMordent: return run([main, upper, main], Math.min(ORNAMENT_NOTE, length / 3))
+    default: return [s]
+  }
+}
+
+/** rit., accel. and a tempo marks in playing order. A new metronome tempo, and a jump back for a
+ *  repeat, count as a tempo. */
+function tempoMarksFor(sheet: MusicSheet, passes: RawPass[], steps: RawStep[]) {
+  const marks: { at: number; change: 'slower' | 'faster' | 'resume' }[] = []
+  const add = (at: number, text: string, resume = false) => {
+    const change = resume || RESUME.test(text) ? 'resume' : SLOWER.test(text) ? 'slower' : FASTER.test(text) ? 'faster' : null
+    if (change && !marks.some((m) => Math.abs(m.at - at) < EPS && m.change === change)) marks.push({ at, change })
+  }
+  passes.forEach((pass, i) => { if (i > 0 && pass.measure <= passes[i - 1].measure) add(pass.at, '', true) })
+  for (const pass of passes) {
+    const measure = sheet.SourceMeasures[pass.measure]
+    for (const tempo of measure.TempoExpressions) {
+      const at = pass.at + tempo.Timestamp.RealValue
+      add(at, [tempo.InstantaneousTempo?.Label, tempo.ContinuousTempo?.Label].join(' '), (tempo.InstantaneousTempo?.TempoInBpm ?? 0) > 0)
+    }
+    for (const list of measure.StaffLinkedExpressions) {
+      for (const expression of list) {
+        for (const words of [...expression.UnknownList, ...expression.MoodList]) add(pass.at + expression.Timestamp.RealValue, words.Label ?? '')
+      }
+    }
+  }
+  steps.forEach((s, i) => { if (i > 0 && s.bpm !== steps[i - 1].bpm) add(s.at, '', true) })
+  return marks.sort((a, b) => a.at - b.at)
+}
+
+/** The tempo factor over played positions: rit. and accel. change it gradually until the next
+ *  tempo mark (or the end), and a tempo puts it back to 1 (D-29). */
+function tempoShape(marks: ReturnType<typeof tempoMarksFor>, lastAt: number) {
+  const ramps: { from: number; until: number; start: number; end: number }[] = []
+  let factor = 1
+  marks.forEach((m, i) => {
+    if (m.change === 'resume') { factor = 1; ramps.push({ from: m.at, until: m.at, start: 1, end: 1 }); return }
+    const until = marks.slice(i + 1).find((x) => x.at > m.at + EPS)?.at ?? lastAt
+    const end = factor * (m.change === 'slower' ? RIT : ACCEL)
+    ramps.push({ from: m.at, until, start: factor, end })
+    factor = end
+  })
+  const froms = ramps.map((r) => r.from)
+  return {
+    factor(p: number) {
+      const r = ramps[lastAtOrBefore(froms, p)]
+      if (!r) return 1
+      return p >= r.until ? r.end : r.start + (r.end - r.start) * (p - r.from) / (r.until - r.from)
+    },
+    /** fine steps through each gradual change, so the clock follows the curve */
+    breakpoints: ramps.flatMap((r) => {
+      const pieces = Math.ceil((r.until - r.from) * 64)
+      return Array.from({ length: pieces + 1 }, (_, i) => r.from + (r.until - r.from) * i / Math.max(1, pieces))
+    }),
+  }
+}
+
+/** Where each fermata holds, and by how much: the part of its note after the last step before
+ *  the note ends lasts twice as long, but at most FERMATA_MAX seconds longer. */
+function fermataHolds(fermatas: { at: number; until: number }[], stepAts: number[], rate: (p: number) => number) {
+  const holds: { from: number; until: number; stretch: number }[] = []
+  for (const f of fermatas) {
+    if (f.until <= f.at + EPS) continue
+    const from = Math.max(f.at, stepAts[lastAtOrBefore(stepAts, f.until - 2 * EPS)] ?? f.at)
+    const seconds = (f.until - from) * rate((from + f.until) / 2)
+    const stretch = 1 + Math.min(1, FERMATA_MAX / seconds)
+    if (!holds.some((h) => Math.abs(h.from - from) < EPS && Math.abs(h.until - f.until) < EPS)) holds.push({ from, until: f.until, stretch })
+  }
+  return holds
 }
 
 /** Dynamic marks and hairpins in playing order. A hairpin ends where OSMD says, else at the next mark. */
