@@ -123,7 +123,7 @@ input[type='range']::-moz-range-thumb { width: 14px; height: 14px; border: 0; bo
 .divider:hover span, .divider:active span { background: var(--right); width: 64px; }
 
 .sheet-frame { flex: 1; min-width: 0; display: flex; position: relative; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
-.sheet { flex: 1; min-width: 0; overflow: auto; position: relative; scrollbar-color: rgba(0, 0, 0, 0.25) transparent; }
+.sheet { flex: 1; min-width: 0; overflow: auto; scrollbar-gutter: stable; position: relative; scrollbar-color: rgba(0, 0, 0, 0.25) transparent; }
 .sheet-night .sheet { scrollbar-color: var(--line-strong) transparent; }
 .sheet-paper { background: var(--paper); --hl-0: #c77800; --hl-1: #1673b8; --hl-2: #7b47c9; --head: #e09a1a; }
 .sheet-night { background: var(--stage-2); border: 1px solid var(--line); --hl-0: var(--right); --hl-1: var(--left); --hl-2: var(--other); --head: var(--right); }
@@ -133,7 +133,7 @@ input[type='range']::-moz-range-thumb { width: 14px; height: 14px; border: 0; bo
 /* The line after the last full row fades out instead of being cut. */
 .sheet:not(.single) { mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); }
 .osmd-host { position: relative; }
-.osmd-host svg { display: block; }
+.osmd-host svg { display: block; overflow: visible; }
 .playhead {
   position: absolute; left: 0; top: 0; width: 3px; border-radius: 2px; pointer-events: none; display: none;
   background: var(--head); box-shadow: 0 0 12px var(--head), 0 0 2px var(--head); opacity: 0.9; will-change: transform;

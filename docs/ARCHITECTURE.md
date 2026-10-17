@@ -91,8 +91,12 @@ walks every cursor stop in playing order, through repeats and 1st/2nd endings. F
 - **Rows (D-22):** render, measure the span of the first N systems, set
   `zoom = panel height / (N × pitch)`, and render again. Up to four passes, until within
   1.5 %; zoom is limited to 0.35–2.4. Rows = 1 uses `renderSingleHorizontalStaffline`. A
-  `ResizeObserver` re-fits after the panel size changes (200 ms debounce). The sheet is not
-  rendered while hidden (Keys view).
+  `ResizeObserver` on the sheet's frame (not the scrolling viewport, whose size changes when a
+  scrollbar appears) re-fits after the panel size changes (200 ms debounce); the viewport keeps
+  a stable scrollbar gutter. Watching the viewport made some panel sizes re-fit forever, which
+  showed as the music shaking while paused. The sheet is not rendered while hidden (Keys view).
+- Compact mode sets no top margin, and OSMD measures text a little short, so a tempo mark above
+  the first line was clipped by the SVG edge. `PageTopMarginNarrow` = 2 units leaves room.
 - **Layout map** (after each render): rows (staff top and bottom in px), an x anchor for each
   timeline step via `GraphicSheet.calculateXPositionFromTimestamp`, measure boxes, and the
   SVG group of each mark (`findGraphicalStaffEntryFromMeasureList` →

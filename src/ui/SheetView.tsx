@@ -40,6 +40,8 @@ interface Layout {
 }
 
 const STAFF_HEIGHT = 4
+/** OSMD units above the first line of music (one unit is the gap between two staff lines) */
+const TOP_MARGIN = 2
 const MIN_ZOOM = 0.35
 const MAX_ZOOM = 2.4
 const INK = { paper: { music: '#17140f', lines: '#4a443b' }, night: { music: '#ece6d8', lines: '#8e88a5' } }
@@ -113,6 +115,9 @@ export default function SheetView(props: Props) {
       disableCursor: true, followCursor: false, drawPartNames: false,
     })
     osmd.setLogLevel('warn')
+    // Compact mode puts the first line at the very top of the SVG, and OSMD measures text a little
+    // short, so a tempo mark above the first line lost its top edge. Leave room for it.
+    osmd.EngravingRules.PageTopMarginNarrow = TOP_MARGIN
     osmd.TransposeCalculator = new TransposeCalculator()
     osmdRef.current = osmd
     return () => { osmd.clear(); osmdRef.current = null }
@@ -162,17 +167,19 @@ export default function SheetView(props: Props) {
   // Rows, colours or panel size changed: lay the music out again.
   useEffect(() => { draw() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [rows, theme])
   useEffect(() => {
-    const view = viewport.current!
-    let size = `${view.clientWidth}x${view.clientHeight}`
+    // Watch the frame, not the scrolling viewport: a scrollbar appearing after a render shrinks
+    // the viewport, and re-fitting to that could remove the scrollbar again, over and over.
+    const frame = viewport.current!.parentElement!
+    let size = `${frame.clientWidth}x${frame.clientHeight}`
     let timer: ReturnType<typeof setTimeout> | undefined
     const observer = new ResizeObserver(() => {
-      const now = `${view.clientWidth}x${view.clientHeight}`
+      const now = `${frame.clientWidth}x${frame.clientHeight}`
       if (now === size) return
       size = now
       clearTimeout(timer)
       timer = setTimeout(() => draw(), 200)
     })
-    observer.observe(view)
+    observer.observe(frame)
     return () => { observer.disconnect(); clearTimeout(timer) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, theme, single])
