@@ -159,7 +159,7 @@ export default function App() {
   const setLoop = (range: [number, number] | null, t = latest.current.timeline) => {
     setLoopPasses(range)
     p.setLoop(range && t ? { start: t.passes[range[0]].time, end: t.passes[range[1]].end } : null)
-    updateScorePrefs({ loop: range })
+    if (String(range) !== String(latest.current.scorePrefs.loop)) updateScorePrefs({ loop: range })
   }
   /** a loop the player chose: with Speed up loops from a set speed, it starts there */
   const startLoop = (range: [number, number]) => {
