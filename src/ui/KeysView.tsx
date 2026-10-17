@@ -67,7 +67,9 @@ export default function KeysView({ timeline, time, names, muted, pressed, onPres
     const perSecond = h / WINDOW
     const y = (t: number) => h - (t - time) * perSecond
 
-    // Octave lines at every C, bar lines with their numbers.
+    // Darker lanes above the black keys, octave lines at every C, bar lines with their numbers.
+    ctx.fillStyle = colour('--lane')
+    for (const k of keys) if (k.black) ctx.fillRect(k.x * w, 0, k.width * w, h)
     ctx.fillStyle = colour('--line')
     for (const k of keys) if (k.note % 12 === 0) ctx.fillRect(Math.round(k.x * w), 0, 1, h)
     if (timeline) {
@@ -102,7 +104,16 @@ export default function KeysView({ timeline, time, names, muted, pressed, onPres
             ctx.stroke()
             ctx.globalAlpha = 1
           } else {
+            // Sounding notes glow; every note gets a soft sheen down its left side.
+            const sounding = s.time <= time + 1e-6
+            if (sounding) { ctx.shadowColor = fill; ctx.shadowBlur = 14 }
             ctx.fillStyle = fill
+            ctx.fill()
+            ctx.shadowBlur = 0
+            const sheen = ctx.createLinearGradient(x, 0, x + width, 0)
+            sheen.addColorStop(0, sounding ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.32)')
+            sheen.addColorStop(0.6, 'rgba(255,255,255,0)')
+            ctx.fillStyle = sheen
             ctx.fill()
             if (names && height > 15 && width > 11) {
               ctx.fillStyle = colour('--stage')
@@ -116,11 +127,15 @@ export default function KeysView({ timeline, time, names, muted, pressed, onPres
       }
     }
     // The line the notes land on.
-    const glow = ctx.createLinearGradient(0, h - 14, 0, h)
+    const glow = ctx.createLinearGradient(0, h - 22, 0, h)
     glow.addColorStop(0, 'transparent')
     glow.addColorStop(1, colour('--glow'))
     ctx.fillStyle = glow
-    ctx.fillRect(0, h - 14, w, 14)
+    ctx.fillRect(0, h - 22, w, 22)
+    ctx.fillStyle = colour('--right')
+    ctx.globalAlpha = 0.7
+    ctx.fillRect(0, h - 1.5, w, 1.5)
+    ctx.globalAlpha = 1
   }, [time, size, rollHeight, timeline, keys, byNote, longest, names, muted])
 
   return <div className="keys" ref={box} data-testid="keys" data-lit={[...lit.keys()].sort((a, b) => a - b).join(',')}>

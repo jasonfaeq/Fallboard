@@ -164,11 +164,57 @@ test('reader: clicking the music jumps there, Shift+click and L make loops that 
   expect(seen.some((t, i) => i > 0 && t < seen[i - 1] - 0.5)).toBe(true) // it wrapped
 })
 
+test('reader: with Speed up loops, each repeat of a loop plays 5 % faster', async ({ page }) => {
+  await open(page)
+  await importScore(page, ODE)
+  await page.getByRole('button', { name: 'Count-in', exact: true }).click()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('switch', { name: 'Speed up loops' }).click()
+  await expect(page.getByRole('switch', { name: 'Speed up loops' })).toHaveAttribute('aria-checked', 'true')
+  await page.keyboard.press('Escape')
+  await page.getByLabel('Speed', { exact: true }).fill('180')
+  await page.getByRole('button', { name: 'Next bar' }).click()
+  await page.keyboard.press('l')
+  await expect(page.getByRole('button', { name: 'Loop bar 2' })).toBeVisible()
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  // Above 100 % nothing changes: at 180 % the two-beat bar comes round about twice in 2.5 s.
+  await page.waitForTimeout(2500)
+  expect(await page.evaluate(() => window.__piano.player.repeats)).toBeGreaterThan(0)
+  expect(await page.evaluate(() => window.__piano.player.speed)).toBe(1.8)
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
+  // From 85 %: 90, 95, then it stays at 100 %.
+  await page.getByLabel('Speed', { exact: true }).fill('85')
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.__piano.player.speed), { timeout: 12000 }).toBe(0.9)
+  await expect(page.getByRole('button', { name: /Loop bar 2/ })).toContainText(/×\d/)
+  await expect.poll(() => page.evaluate(() => window.__piano.player.speed), { timeout: 12000 }).toBe(1)
+  await page.waitForTimeout(2500)
+  expect(await page.evaluate(() => window.__piano.player.speed)).toBe(1)
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
+})
+
+test('reader: the line between sheet and keys resizes them and is remembered', async ({ page }) => {
+  await open(page)
+  const keys = page.getByRole('region', { name: 'Keys' })
+  const before = (await keys.boundingBox())!.height
+  const divider = (await page.getByRole('separator', { name: 'Drag to resize the keys' }).boundingBox())!
+  await page.mouse.move(divider.x + divider.width / 2, divider.y + divider.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(divider.x + divider.width / 2, divider.y - 150, { steps: 5 })
+  await page.mouse.up()
+  const after = (await keys.boundingBox())!.height
+  expect(after).toBeGreaterThan(before + 100)
+  await page.reload()
+  await page.waitForFunction(() => !!window.__piano?.timeline)
+  expect(Math.abs((await keys.boundingBox())!.height - after)).toBeLessThan(4)
+})
+
 test('reader: transposing re-renders the music and moves every pitch', async ({ page }) => {
   await open(page)
   await importScore(page, ODE)
   const pitches = () => page.evaluate(() => window.__piano.timeline!.sounds.slice(0, 3).map((s) => s.midi))
   expect(await pitches()).toEqual([48, 64, 64])
+  await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByRole('button', { name: 'Transpose up' }).click()
   await page.getByRole('button', { name: 'Transpose up' }).click()
   await expect(page.getByTestId('transpose')).toHaveText('+2')

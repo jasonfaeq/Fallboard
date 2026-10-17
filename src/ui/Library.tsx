@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { ScoreEntry } from '../reader/library'
+import Icon from './Icons'
 
 interface Props {
   current: string
@@ -11,33 +12,65 @@ interface Props {
   onClose: () => void
 }
 
+/** a steady colour per score, so a title is easy to spot again */
+function hue(text: string) {
+  let h = 0
+  for (const c of text) h = (h * 31 + c.charCodeAt(0)) % 360
+  return h
+}
+/** the composer's initials (first and last name), else the title's */
+function initials(entry: ScoreEntry) {
+  const words = (entry.composer || entry.title).replace(/[^\p{L}\p{N} ]/gu, '').split(/\s+/).filter(Boolean)
+  return words.length ? (words[0][0] + (words.length > 1 ? words[words.length - 1][0] : '')).toUpperCase() : '♪'
+}
+const added = (when: number) => when ? new Date(when).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+
 /** The score shelf: import a MusicXML or MuseScore file, open or delete what was imported, or a built-in piece. */
 export default function Library({ current, builtIn, imported, onOpen, onImport, onDelete, onClose }: Props) {
   const input = useRef<HTMLInputElement>(null)
   const [confirm, setConfirm] = useState('')
+  const [query, setQuery] = useState('')
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  const matches = (e: ScoreEntry) => words.every((w) => `${e.title} ${e.composer} ${e.file}`.toLowerCase().includes(w))
+  const mine = imported.filter(matches).sort((a, b) => b.added - a.added)
+  const shipped = builtIn.filter(matches)
+
   const item = (entry: ScoreEntry) => <li key={entry.id} className={entry.id === current ? 'current' : ''}>
-    <button className="score-item" onClick={() => onOpen(entry)}>
-      <strong>{entry.title}</strong>
-      <span>{[entry.composer, entry.file].filter(Boolean).join(' · ') || 'Built-in'}</span>
+    <button className="score-item" onClick={() => onOpen(entry)} title={entry.builtIn ? undefined : `Imported ${added(entry.added)}`}>
+      <span className="cover" style={{ '--hue': hue(entry.title) } as React.CSSProperties} aria-hidden="true">{initials(entry)}</span>
+      <span className="score-text">
+        <strong>{entry.title}</strong>
+        <span>{[entry.composer, entry.builtIn ? 'Built-in' : entry.file].filter(Boolean).join(' · ')}</span>
+      </span>
+      {entry.id === current && <span className="badge">Open</span>}
     </button>
     {!entry.builtIn && (confirm === entry.id
-      ? <button className="danger" onClick={() => { setConfirm(''); onDelete(entry) }}>Delete for good</button>
-      : <button className="quiet" aria-label={`Delete ${entry.title}`} onClick={() => setConfirm(entry.id)}>Delete</button>)}
+      ? <button className="danger" onClick={() => { setConfirm(''); onDelete(entry) }} onBlur={() => setConfirm('')} autoFocus>Delete for good</button>
+      : <button className="icon-button delete" aria-label={`Delete ${entry.title}`} title="Delete" onClick={() => setConfirm(entry.id)}><Icon name="trash" size={16} /></button>)}
   </li>
-  return <div className="drawer-backdrop" onClick={onClose}>
+
+  return <div className="backdrop" onClick={onClose}>
     <aside className="drawer" role="dialog" aria-label="Scores" onClick={(e) => e.stopPropagation()}>
-      <header><h2>Scores</h2><button className="quiet" aria-label="Close scores" onClick={onClose}>✕</button></header>
-      <button className="primary wide" onClick={() => input.current!.click()}>Import a score…</button>
+      <header><h2>Scores</h2><button className="icon-button" aria-label="Close scores" onClick={onClose}><Icon name="close" /></button></header>
+      <button className="import-zone" onClick={() => input.current!.click()}>
+        <Icon name="upload" size={26} />
+        <strong>Import a score…</strong>
+        <span>MusicXML (.mxl, .musicxml) or MuseScore (.mscz). You can also drop a file anywhere on the window.</span>
+      </button>
       <input ref={input} type="file" hidden data-testid="import-input"
         accept=".mxl,.musicxml,.xml,.mscz,.mscx,.mid,.midi,.pdf"
         onChange={(e) => { if (e.target.files?.length) onImport(e.target.files); e.target.value = '' }} />
-      <p className="hint">Opens MusicXML (<b>.mxl</b>, <b>.musicxml</b>) and MuseScore files (<b>.mscz</b>).
-        From <b>musescore.com</b>: open a score, choose <b>Download</b>, then <b>MusicXML</b> or <b>MuseScore</b>.
-        You can also drop the file anywhere on this window. Imported scores stay in this browser.</p>
-      <h3>Imported</h3>
-      {imported.length ? <ul className="score-list">{imported.map(item)}</ul> : <p className="hint">Nothing imported yet.</p>}
+      <p className="hint">From <b>musescore.com</b>: open a score, choose <b>Download</b>, then <b>MusicXML</b> or <b>MuseScore</b>.
+        Imported scores stay in this browser.</p>
+      {imported.length + builtIn.length > 3 && <label className="search">
+        <Icon name="search" size={16} />
+        <input type="search" placeholder="Search titles and composers" value={query} aria-label="Search scores" onChange={(e) => setQuery(e.target.value)} />
+      </label>}
+      <h3>Imported <span>{imported.length || ''}</span></h3>
+      {mine.length ? <ul className="score-list">{mine.map(item)}</ul>
+        : <p className="hint empty">{imported.length ? 'No imported score matches.' : 'Nothing imported yet.'}</p>}
       <h3>Built-in</h3>
-      <ul className="score-list">{builtIn.map(item)}</ul>
+      {shipped.length ? <ul className="score-list">{shipped.map(item)}</ul> : <p className="hint empty">No built-in piece matches.</p>}
     </aside>
   </div>
 }

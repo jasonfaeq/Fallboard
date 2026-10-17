@@ -200,3 +200,18 @@ LibreScore/dl-librescore do. Those tools get around MuseScore's download paywall
 page images and MIDI, not notation; that has no place in a paid app. The `app-librescore`
 zip Jason shared holds only its docs, translations and a build workflow, no downloader.
 (Supersedes D-21's refusal of `.mscz`, and the `.mscz` non-goal in VISION.md.)
+
+**D-26 · 2026-10-17 · A player-style layout, and loops that speed up** — Jason asked for a
+nicer-looking app with better features. The two rows of buttons became a top bar (scores,
+title, view, rows, full screen, help) and a dock under the music like a media player
+(scrubber; position and hands; start, previous bar, play, next bar, loop; speed, metronome,
+count-in), with the settings used now and then (speed presets, transpose, note names, sheet
+colours, volume) in a popover. The sheet sits on a card, the keys are shaded with a felt
+strip and glowing lit keys, falling notes glow while they sound, and the Scores drawer has
+covers, an import area and search. New: drag the line between sheet and keys to resize them
+(remembered); full screen (F); previous/next bar buttons; a loop repeat count; and **Speed up
+loops**, which plays a loop 5 % faster each time round until 100 %. Hand colours (gold
+right, blue left) and every shortcut are unchanged; no dependency was added (icons are our
+own SVG). *Practice tools stay first (pillar 3): speeding a loop up gradually is the usual
+way to learn a hard passage, and a resizable split lets the keys or the sheet take the room.
+Fewer always-visible controls make the music the biggest thing on screen.*

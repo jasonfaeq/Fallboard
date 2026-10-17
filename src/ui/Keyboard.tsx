@@ -53,7 +53,8 @@ export default function Keyboard({ keys, width, height, lit, names, onPress, onR
       <rect
         className={`key ${k.black ? 'black' : 'white'}${staff === undefined ? '' : staff < 0 ? ' pressed' : ` lit-${Math.min(staff, 2)}`}`}
         data-note={k.note}
-        x={k.x * width + 0.5} width={k.width * width - 1} height={k.black ? blackHeight : height} rx={k.black ? 2 : 3}
+        // Drawn from above the top edge, so only the front corners are rounded.
+        x={k.x * width + 0.5} y={-6} width={k.width * width - 1} height={(k.black ? blackHeight : height) + 6} rx={k.black ? 2.5 : 4}
         onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); onPress(k.note) }}
         onPointerUp={() => onRelease(k.note)}
         onPointerCancel={() => onRelease(k.note)}
@@ -64,7 +65,21 @@ export default function Keyboard({ keys, width, height, lit, names, onPress, onR
     </g>
   }
   return <svg className="keyboard" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Piano keyboard">
+    <defs>
+      <linearGradient id="kb-white" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#e9e4d8" /><stop offset="0.85" stopColor="#fbf9f4" /><stop offset="1" stopColor="#ddd7ca" />
+      </linearGradient>
+      <linearGradient id="kb-black" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#0c0b10" /><stop offset="0.82" stopColor="#2a2734" /><stop offset="1" stopColor="#141219" />
+      </linearGradient>
+      <linearGradient id="kb-shade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#000" stopOpacity="0.45" /><stop offset="1" stopColor="#000" stopOpacity="0" />
+      </linearGradient>
+    </defs>
     {keys.filter((k) => !k.black).map(key)}
     {keys.filter((k) => k.black).map(key)}
+    {/* the felt strip and the shadow the fallboard casts on the keys */}
+    <rect className="kb-shade" x={0} y={0} width={width} height={Math.min(14, height * 0.12)} fill="url(#kb-shade)" />
+    <rect className="kb-felt" x={0} y={0} width={width} height={3} />
   </svg>
 }

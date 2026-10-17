@@ -19,13 +19,30 @@ part, describe how it actually works.
         │                                   │
         ▼                                   ▼
  reader/player.ts ──▶ engine/audio.ts      ui/KeysView.tsx (canvas falling notes + Keyboard)
-   schedules notes and clicks              App.tsx: toolbar, scrubber, library, shortcuts;
+   schedules notes and clicks              App.tsx: top bar, dock, settings, library, shortcuts;
    on the Transport (audio clock)          one requestAnimationFrame redraw while playing
 ```
 
 Layers: `engine/` (sound, clock, note numbers) knows nothing of React or scores. `reader/`
 (timeline, player, library, prefs, mscz) has no DOM, apart from IndexedDB/localStorage in
 their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and forwards clicks.
+
+## Screen layout (`App.tsx`, D-26)
+
+- **Top bar**: the Scores drawer, the title and composer, View (Sheet · Keys · Both), Rows
+  (1–4), full screen (F) and the shortcuts list.
+- **Stage**: the sheet on a card, then the keys. In Both, the line between them drags to
+  resize the keys (20–75 % of the stage, double-click resets to 42 %, remembered as
+  `split`). Messages float over the stage; the count-in shows a large number.
+- **Dock**: the scrubber, then the position and the hands (left), the transport —
+  start, previous bar, play, next bar, loop with a repeat count (centre) — and speed,
+  metronome, count-in and Settings (right).
+- **Settings** (`ui/Settings.tsx`, a popover over the dock): speed presets, Speed up loops,
+  transpose, note names, paper or night sheet, volume.
+- **Speed up loops**: the player calls `onLoop(repeats)` each time a loop comes round; with
+  the setting on, the app adds 5 % to the speed until 100 % (it never slows a faster speed).
+- Icons are our own line drawings in `ui/Icons.tsx`; colours and controls are CSS variables
+  and classes in `styles.css`.
 
 ## Timing (D-06)
 
@@ -91,9 +108,10 @@ walks every cursor stop in playing order, through repeats and 1st/2nd endings. F
 ## Keys view (`ui/KeysView.tsx`, `ui/Keyboard.tsx`)
 
 The keyboard covers the piece's range rounded out to whole C–B octaves, at least three
-octaves (`keyRange`). Falling notes are drawn on a canvas (3.2 score seconds visible): bar
-lines with numbers, octave lines at each C, notes in staff colours, muted staves as
-outlines, note names when enabled. The SVG keyboard lights the keys the score is sounding;
+octaves (`keyRange`). Falling notes are drawn on a canvas (3.2 score seconds visible): darker
+lanes over the black keys, bar lines with numbers, octave lines at each C, notes in staff
+colours with a sheen (sounding notes glow), muted staves as outlines, note names when
+enabled. The keys are shaded with SVG gradients under a felt strip; lit keys glow. The SVG keyboard lights the keys the score is sounding;
 keys held with the mouse sound on the `'touch'` piano channel. `data-lit` on the view lists
 the lit notes (used by tests).
 
@@ -111,7 +129,7 @@ separately. The page pauses playback when it is hidden.
   file name, date) and `data` (the file's bytes; for a MuseScore file, the MusicXML it was
   converted to). If storage fails, the score still opens but is not kept.
 - `reader/prefs.ts`: localStorage `piano-trainer:prefs` (view, rows, theme, note names,
-  metronome, count-in, volume, last score) and `piano-trainer:score:<id>` (speed,
+  metronome, count-in, volume, Speed up loops, keys split, last score) and `piano-trainer:score:<id>` (speed,
   transposition, muted staves). Every access is wrapped in try/catch.
 
 ## Build & run

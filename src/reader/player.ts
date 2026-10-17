@@ -20,6 +20,9 @@ export class Player {
   muted = new Set<number>()
   error = ''
   onChange: () => void = () => {}
+  /** the loop came round again; `repeats` counts the times since the loop was set or play began */
+  onLoop: (repeats: number) => void = () => {}
+  repeats = 0
   private position = 0
   private timer: ReturnType<typeof setInterval> | null = null
   private soundCursor = 0
@@ -72,6 +75,7 @@ export class Player {
     if (this.position >= this.end - 1e-3) this.position = loop?.start ?? 0
     if (loop && (this.position < loop.start - 1e-3 || this.position >= loop.end - 1e-3)) this.position = loop.start
     this.from = this.position
+    this.repeats = 0
     this.countClicks = []
     if (this.countIn) {
       const pass = timeline.passes[passAt(timeline, this.from)]
@@ -137,6 +141,7 @@ export class Player {
   }
   setLoop(loop: Loop | null) {
     this.loop = loop && loop.end > loop.start ? loop : null
+    this.repeats = 0
     if (this.loop && this.playing) {
       const now = this.engine.transport.beatAt()
       if (now < this.loop.start || now >= this.loop.end) this.seek(this.loop.start)
@@ -173,6 +178,8 @@ export class Player {
       beat = transport.beatAt(now)
       this.from = this.loop.start
       this.cue(beat)
+      this.onLoop(++this.repeats)
+      this.onChange()
     }
     while (this.countCursor < this.countClicks.length) {
       const click = this.countClicks[this.countCursor]

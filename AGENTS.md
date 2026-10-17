@@ -137,10 +137,12 @@ src/ui/SheetView.tsx     OSMD rendering, rows fit, playhead, lit notes, click-to
 src/ui/KeysView.tsx      falling notes (canvas) + Keyboard.tsx
 src/ui/Library.tsx       the Scores drawer: import, open, delete
 src/ui/Scrubber.tsx      position bar with bar ticks and the loop
-src/App.tsx              screen layout, toolbar, shortcuts, drag-and-drop, rAF redraw
+src/ui/Settings.tsx      the settings popover: speed presets, speed up loops, transpose, display, volume
+src/ui/Icons.tsx         our own line icons
+src/App.tsx              screen layout (top bar, stage, dock), shortcuts, drag-and-drop, rAF redraw
 parked/midi-trainer/     the parked MIDI trainer (not compiled, not tested)
 ```
 
 Shortcuts: Space play/pause · Home start · ← → bar · ↑ ↓ speed · L loop · M metronome ·
-1–4 rows · S/K/B view · N note names · O scores · ? help. Debug handle in the console:
+1–4 rows · S/K/B view · N note names · F full screen · O scores · ? help. Debug handle in the console:
 `window.__piano = { engine, player, timeline, osmd }`.

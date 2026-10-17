@@ -41,6 +41,10 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
       browser by our own reader — 2026-10-16 (D-25). *Needs Jason: try a few real musescore.com
       downloads, especially MuseScore 3 files (none were on hand to test).*
 - [ ] MIDI-file import for the Keys view (a MIDI file has no sheet music).
+- [x] **Look and layout**: a top bar and a player dock, a settings popover, shaded keys and
+      glowing notes, a Scores drawer with search; resizable sheet/keys split, full screen,
+      previous/next bar buttons, Speed up loops — 2026-10-17 (D-26). *Needs Jason: does the
+      new layout feel right at the piano, and is 5 % per repeat a good step?*
 
 ## Later
 
