@@ -303,3 +303,12 @@ number, not the one nearest the playhead: it is predictable, matches reading the
 the top, and the next-bar button or a click on the music reaches a later time through. *The
 "nearest" rule would make the same number land in different places depending on where you
 were.*
+
+**D-36 · 2026-10-17 · Metronome only is a mode, not remembered** — Metronome only mutes what
+the piano receives and keeps everything else (playhead, lit notes, falling keys, the click
+even with the metronome off), so Jason can play the part himself to the click. It is not
+saved: opening the app to silence would look broken. While on, the dock's Metronome chip
+says so and one click turns the music back on; Shift+M toggles it. The accented first beat
+already existed (a higher, louder click); it is now a setting, on by default, that also
+covers the count-in. *The accent's level and pitch were left as they were for Jason to
+judge by ear.*

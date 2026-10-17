@@ -143,6 +143,6 @@ src/App.tsx              screen layout (top bar, stage, dock), shortcuts, drag-a
 parked/midi-trainer/     the parked MIDI trainer (not compiled, not tested)
 ```
 
-Shortcuts: Space play/pause · Home start · ← → bar · ↑ ↓ speed · L loop · M metronome ·
-1–4 rows · S/K/B view · N note names · F full screen · O scores · ? help. Debug handle in the console:
+Shortcuts: Space play/pause · Home start · ← → bar · G go to bar · ↑ ↓ speed · L loop ·
+[ ] previous/next section · M metronome · Shift+M metronome only · 1–4 rows · S/K/B view · N note names · F full screen · O scores · ? help. Debug handle in the console:
 `window.__piano = { engine, player, timeline, osmd }`.

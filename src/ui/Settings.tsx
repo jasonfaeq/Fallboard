@@ -13,6 +13,8 @@ interface Props {
   onSpeed: (speed: number) => void
   onVolume: (volume: number) => void
   onRoom: (room: Room) => void
+  metronomeOnly: boolean
+  onMetronomeOnly: (on: boolean) => void
   /** the staves with their own volume (none for a one-staff score) */
   staves: StaffInfo[]
   handVolume: (staff: number) => number
@@ -28,7 +30,7 @@ const STARTS = percent(25, 150)
 const TARGETS = percent(50, 200)
 
 /** The settings that are changed now and then: pitch, labels, sheet colours, practice helpers, volume. */
-export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose, onSpeed, onVolume, onRoom, staves, handVolume, onHandVolume, onClose }: Props) {
+export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose, onSpeed, onVolume, onRoom, metronomeOnly, onMetronomeOnly, staves, handVolume, onHandVolume, onClose }: Props) {
   const panel = useRef<HTMLDivElement>(null)
   useClickAway(panel, 'data-settings-toggle', onClose)
 
@@ -80,19 +82,6 @@ export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose
       </label>
     </div>}
     <div className="setting">
-      <div><span>Count-in</span><small>When Count-in is on</small></div>
-      <div className="stepper">
-        <button aria-label="Shorter count-in" disabled={prefs.countInLength <= 1} onClick={() => onPrefs({ countInLength: prefs.countInLength - 1 })}>−</button>
-        <output data-testid="count-in-length">{prefs.countInLength}</output>
-        <button aria-label="Longer count-in" disabled={prefs.countInLength >= COUNT_MAX[prefs.countInUnit]} onClick={() => onPrefs({ countInLength: prefs.countInLength + 1 })}>+</button>
-      </div>
-      <div className="segmented small" role="group" aria-label="Count-in unit">
-        {(['bars', 'beats'] as const).map((unit) => <button key={unit} className={prefs.countInUnit === unit ? 'on' : ''} aria-pressed={prefs.countInUnit === unit}
-          onClick={() => onPrefs({ countInUnit: unit, countInLength: Math.min(prefs.countInLength, COUNT_MAX[unit]) })}>{unit === 'bars' ? 'Bars' : 'Beats'}</button>)}
-      </div>
-    </div>
-    {toggle('Count in each loop', prefs.countInLoops, () => onPrefs({ countInLoops: !prefs.countInLoops }), 'Count in again each time a loop comes round')}
-    <div className="setting">
       <div><span>Transpose</span><small>Half steps, for this score</small></div>
       <div className="stepper">
         <button aria-label="Transpose down" disabled={transpose <= -12} onClick={() => onTranspose(transpose - 1)}>−</button>
@@ -100,6 +89,24 @@ export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose
         <button aria-label="Transpose up" disabled={transpose >= 12} onClick={() => onTranspose(transpose + 1)}>+</button>
       </div>
     </div>
+    <h3>Count-in and metronome</h3>
+    <div className="setting">
+      <div><span>Count-in</span></div>
+      <div className="setting-controls">
+        <div className="stepper">
+          <button aria-label="Shorter count-in" disabled={prefs.countInLength <= 1} onClick={() => onPrefs({ countInLength: prefs.countInLength - 1 })}>−</button>
+          <output data-testid="count-in-length">{prefs.countInLength}</output>
+          <button aria-label="Longer count-in" disabled={prefs.countInLength >= COUNT_MAX[prefs.countInUnit]} onClick={() => onPrefs({ countInLength: prefs.countInLength + 1 })}>+</button>
+        </div>
+        <div className="segmented small" role="group" aria-label="Count-in unit">
+          {(['bars', 'beats'] as const).map((unit) => <button key={unit} className={prefs.countInUnit === unit ? 'on' : ''} aria-pressed={prefs.countInUnit === unit}
+            onClick={() => onPrefs({ countInUnit: unit, countInLength: Math.min(prefs.countInLength, COUNT_MAX[unit]) })}>{unit === 'bars' ? 'Bars' : 'Beats'}</button>)}
+        </div>
+      </div>
+    </div>
+    {toggle('Count in each loop', prefs.countInLoops, () => onPrefs({ countInLoops: !prefs.countInLoops }), 'Count in again each time a loop comes round')}
+    {toggle('Accent the first beat', prefs.accent, () => onPrefs({ accent: !prefs.accent }), 'A higher click on beat one of each bar')}
+    {toggle('Metronome only', metronomeOnly, () => onMetronomeOnly(!metronomeOnly), 'Mute the music and keep the click, playhead and lit notes, to play it yourself (Shift+M)')}
     <h3>Display</h3>
     {toggle('Note names', prefs.noteNames, () => onPrefs({ noteNames: !prefs.noteNames }), 'On the keys and falling notes (N)')}
     <div className="setting">

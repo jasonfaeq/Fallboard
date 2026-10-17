@@ -275,3 +275,57 @@ test('practice: go to a printed bar number, the first time a repeat plays it', a
   expect(await time(page)).toBeCloseTo(4, 3)
   expect(errors).toEqual([])
 })
+
+test('practice: the metronome accents beat one, and Metronome only mutes the music but not the click', async ({ page }) => {
+  const errors = await open(page)
+  await importOde(page)
+  await page.getByRole('button', { name: 'Count-in', exact: true }).click()
+  await listen(page)
+  await page.getByLabel('Speed', { exact: true }).fill('200')
+
+  // Metronome only: clicks with beat one accented, the playhead and lit notes, no piano.
+  await page.keyboard.press('Shift+M')
+  await expect(page.getByRole('button', { name: 'Metronome only' })).toBeVisible()
+  await page.keyboard.press(' ')
+  await expect.poll(() => time(page)).toBeGreaterThan(0.3)
+  expect(await page.locator('[data-testid=sheet] .lit-0').count()).toBeGreaterThan(0)
+  expect(await page.getByTestId('keys').getAttribute('data-lit')).toContain('48')
+  await expect.poll(() => time(page), { timeout: 5000 }).toBeGreaterThan(2.6)
+  await page.keyboard.press(' ')
+  const solo = await heard(page)
+  expect(solo.notes).toEqual([])
+  expect(solo.clicks.slice(0, 6)).toEqual([0, 0.5, 1, 1.5, 2, 2.5].map((beat) => ({ beat, accent: beat === 0 || beat === 2 })))
+
+  // Back to the music (the dock chip), from where it stopped.
+  await page.getByRole('button', { name: 'Metronome only' }).click()
+  await expect(page.getByRole('button', { name: 'Metronome', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  await page.keyboard.press(' ')
+  await expect.poll(async () => (await page.evaluate(() => (window as unknown as { heard: Heard }).heard.notes.length))).toBeGreaterThan(0)
+  await page.keyboard.press(' ')
+
+  // Turning it on while playing silences the piano at once.
+  await heard(page)
+  await page.keyboard.press('Home')
+  await page.keyboard.press(' ')
+  await expect.poll(() => time(page)).toBeGreaterThan(0.6)
+  await page.keyboard.press('Shift+M')
+  const at = await page.evaluate(() => window.__piano.engine.transport.beatAt() + 0.3) // past what was already scheduled
+  await expect.poll(() => time(page), { timeout: 5000 }).toBeGreaterThan(at + 1)
+  await page.keyboard.press(' ')
+  expect((await heard(page)).notes.filter((n) => n.beat > at)).toEqual([])
+  await page.keyboard.press('Shift+M')
+
+  // Without the accent every click is the same.
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('switch', { name: 'Accent the first beat' }).click()
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('m')
+  await page.keyboard.press('Home')
+  await page.keyboard.press(' ')
+  await expect.poll(() => time(page), { timeout: 5000 }).toBeGreaterThan(2.6)
+  await page.keyboard.press(' ')
+  const plain = (await heard(page)).clicks
+  expect(plain.length).toBeGreaterThanOrEqual(5)
+  expect(plain.some((c) => c.accent)).toBe(false)
+  expect(errors).toEqual([])
+})

@@ -15,6 +15,10 @@ export class Player {
   timeline: Timeline | null = null
   speed = 1
   metronome = false
+  /** a higher, louder click on the first beat of each bar */
+  accent = true
+  /** the music is silent; the clicks, playhead and lit notes go on */
+  metronomeOnly = false
   countIn = false
   /** how long the count-in is: `countInLength` bars or beats */
   countInLength = 1
@@ -150,6 +154,14 @@ export class Player {
     }
     this.onChange()
   }
+  setMetronomeOnly(on: boolean) {
+    this.metronomeOnly = on
+    if (this.playing) {
+      this.engine.piano?.allNotesOff('score')
+      this.cue(Math.max(this.from, this.engine.transport.beatAt()))
+    }
+    this.onChange()
+  }
   volumeOf(staff: number) { return this.volumes.get(staff) ?? 1 }
   /** Set the staves' volumes at once, as remembered for a score. */
   setVolumes(volumes: Record<number, number>) {
@@ -198,7 +210,7 @@ export class Player {
       const at = transport.timeAtBeat(click.beat)!
       if (at > horizon) break
       // After a loop's jump back the first click is a little late; it still sounds.
-      if (at >= now - 0.1) this.engine.click(Math.max(now, at), click.accent)
+      if (at >= now - 0.1) this.engine.click(Math.max(now, at), click.accent && this.accent)
       this.countCursor++
     }
     const { sounds, clicks } = timeline
@@ -209,7 +221,7 @@ export class Player {
       const at = transport.timeAtBeat(Math.max(sound.time, this.from))!
       if (at > horizon) break
       this.soundCursor++
-      const volume = this.volumeOf(sound.staff)
+      const volume = this.metronomeOnly ? 0 : this.volumeOf(sound.staff)
       if (volume <= 0) continue
       // The damper falls at the release: later than the end while the pedal is down.
       const off = transport.timeAtBeat(Math.min(sound.release, stopAt))!
@@ -223,7 +235,7 @@ export class Player {
       const at = transport.timeAtBeat(click.time)!
       if (at > horizon) break
       this.clickCursor++
-      if (this.metronome && at >= now - 0.02) this.engine.click(Math.max(now, at), click.accent)
+      if ((this.metronome || this.metronomeOnly) && at >= now - 0.02) this.engine.click(Math.max(now, at), click.accent && this.accent)
     }
     if (!this.loop && beat >= this.end + RING) {
       this.halt()

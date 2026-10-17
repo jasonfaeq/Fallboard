@@ -38,7 +38,8 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   start, previous bar, play, next bar, loop with a repeat count, sections (centre) — and speed,
   metronome, count-in and Settings (right).
 - **Settings** (`ui/Settings.tsx`, a popover over the dock): speed presets, Speed up loops,
-  the count-in's length (1–4 bars or 1–8 beats) and Count in each loop, transpose, note names, paper or night sheet, volume, room, and each hand's volume.
+  transpose, the count-in's length (1–4 bars or 1–8 beats), Count in each loop, Accent the
+  first beat, Metronome only, note names, paper or night sheet, volume, room, and each hand's volume.
 - **Hands (D-30)**: each staff has a volume 0–100 % (`Player.volumes`; 0 = muted), sent to
   the piano as `noteOn(…, level)`, which scales the note's gain. The hand chips in the dock
   mute and unmute (back to the hand's last volume) and show a volume below 100 %; the sliders
@@ -50,6 +51,13 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   section is its first and last pass, so a repeated bar is told apart. The loop button shows
   the section's name while its loop is set; `[` and `]` loop the previous or next section
   (without one set, the first after or the last before the playhead).
+- **Metronome** (D-36): clicks come from the timeline's `clicks`; beat one of each bar is
+  accented (1400 Hz at gain 0.16 against 900 Hz at 0.1) unless Accent the first beat is off,
+  which also plain-clicks the count-in. **Metronome only** (Shift+M, or Settings; not
+  remembered) sends no notes to the piano but keeps the playhead, lit notes, falling keys and
+  clicks, whether or not the metronome is on; the dock's Metronome chip reads "Metronome
+  only" and turns it off. Switching it while playing stops sounding notes and re-cues, like
+  muting a hand.
 - **Go to bar** (`ui/GoToBar.tsx`): G, or clicking the position in the dock, opens a box
   for a printed bar number. It seeks to the first pass with that number (with repeats, the
   first time it is played; 0 is a pickup) and ends a loop it lands outside; a number the
@@ -60,6 +68,9 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   default "the speed now"), a loop the player makes (L, Shift+click, a section) first sets
   the speed to it; a loop restored with the score does not. Settings shows step, start and
   target under the switch while it is on.
+- The dock's three parts sit in an `auto 1fr auto` grid with the transport centred in the
+  middle, so a crowded side can never cover it; at 1200 px and below they stack. At 1360 px
+  and below the Speed label and chip icons hide and the loop label is cut shorter.
 - Popovers (settings, sections, go to bar) close on a press elsewhere (`ui/clickAway.ts`).
 - Icons are our own line drawings in `ui/Icons.tsx`; colours and controls are CSS variables
   and classes in `styles.css`.
@@ -249,7 +260,8 @@ the player sends), hand volumes with the old-prefs migration, and the room setti
 Ode fixture): saved sections across reloads; position and loop after a reload (also mid-play)
 and after opening another score; Speed up loops with a start, a 10 % step and a 120 % target;
 the clicks of a 2-beat and a 2-bar count-in, and counting in each loop (no notes during it);
-go to bar with a repeated bar, a missing bar and a loop.
+go to bar with a repeated bar, a missing bar and a loop; accented and plain clicks, and
+Metronome only (no notes sent, lit notes and keys still on, switching while playing).
 The practice tests wrap `engine.click` and `piano.noteOn` to log what is sent.
 
 Not covered: how real MuseScore downloads look and sound, and how the audio feels. Those

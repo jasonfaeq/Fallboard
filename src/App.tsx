@@ -25,7 +25,7 @@ declare global {
 
 const SHORTCUTS: [string, string][] = [
   ['Space', 'Play / pause'], ['Home', 'Back to the start'], ['← →', 'Previous / next bar'], ['G', 'Go to a bar number'], ['↑ ↓', 'Faster / slower'],
-  ['L', 'Loop this bar (Shift+click a bar to stretch the loop)'], ['[ · ]', 'Loop the previous / next saved section'], ['M', 'Metronome'], ['1 – 4', 'Rows of music'],
+  ['L', 'Loop this bar (Shift+click a bar to stretch the loop)'], ['[ · ]', 'Loop the previous / next saved section'], ['M', 'Metronome'], ['Shift+M', 'Metronome only: mute the music, keep the click'], ['1 – 4', 'Rows of music'],
   ['S · K · B', 'Sheet · Keys · Both'], ['N', 'Note names'], ['F', 'Full screen'], ['O', 'Scores'], ['?', 'This list'],
 ]
 const VIEWS: [View, string][] = [['sheet', 'Sheet'], ['keys', 'Keys'], ['both', 'Both']]
@@ -299,11 +299,12 @@ export default function App() {
   useEffect(() => () => { p.dispose(); engine.current!.dispose() }, [p])
   useEffect(() => {
     p.metronome = prefs.metronome
+    p.accent = prefs.accent
     p.countIn = prefs.countIn
     p.countInLength = prefs.countInLength
     p.countInUnit = prefs.countInUnit
     p.countInLoops = prefs.countInLoops
-  }, [p, prefs.metronome, prefs.countIn, prefs.countInLength, prefs.countInUnit, prefs.countInLoops])
+  }, [p, prefs.metronome, prefs.accent, prefs.countIn, prefs.countInLength, prefs.countInUnit, prefs.countInLoops])
 
   useEffect(() => {
     window.__piano = { engine: engine.current!, player: p, timeline, osmd: osmd.current }
@@ -321,13 +322,13 @@ export default function App() {
     const actions: Record<string, () => void> = {
       ' ': () => p.toggle(), Home: () => p.stop(), ArrowLeft: () => stepBar(-1), ArrowRight: () => stepBar(1),
       ArrowUp: () => setSpeed(p.speed + 0.05), ArrowDown: () => setSpeed(p.speed - 0.05),
-      l: loopHere, '[': () => stepSection(-1), ']': () => stepSection(1), m: () => updatePrefs({ metronome: !prefs.metronome }), n: () => updatePrefs({ noteNames: !prefs.noteNames }),
+      M: () => p.setMetronomeOnly(!p.metronomeOnly), l: loopHere, '[': () => stepSection(-1), ']': () => stepSection(1), m: () => updatePrefs({ metronome: !prefs.metronome }), n: () => updatePrefs({ noteNames: !prefs.noteNames }),
       s: () => updatePrefs({ view: 'sheet' }), k: () => updatePrefs({ view: 'keys' }), b: () => updatePrefs({ view: 'both' }),
       g: () => { if (timeline) setGoToOpen(true) }, f: toggleFullscreen, o: () => setLibraryOpen((v) => !v), '?': () => setHelp((v) => !v),
       Escape: () => { setHelp(false); setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false); setGoToOpen(false) },
       '1': () => updatePrefs({ rows: 1 }), '2': () => updatePrefs({ rows: 2 }), '3': () => updatePrefs({ rows: 3 }), '4': () => updatePrefs({ rows: 4 }),
     }
-    const action = actions[key.length === 1 ? key.toLowerCase() : key]
+    const action = actions[key === 'M' && e.shiftKey ? 'M' : key.length === 1 ? key.toLowerCase() : key]
     if (!action) return
     e.preventDefault()
     action()
@@ -456,14 +457,18 @@ export default function App() {
               onChange={(e) => setSpeed(Number(e.target.value) / 100)} />
             <output className={speed !== 100 ? 'changed' : ''}>{speed}%</output>
           </label>
-          <button className={`chip${prefs.metronome ? ' on' : ''}`} aria-pressed={prefs.metronome} onClick={() => updatePrefs({ metronome: !prefs.metronome })} title="Metronome (M)">
-            <Icon name="metronome" size={16} />Metronome</button>
+          {p.metronomeOnly
+            ? <button className="chip on solo" aria-pressed="true" onClick={() => p.setMetronomeOnly(false)} title="The music is muted (Shift+M). Click to hear it again.">
+              <Icon name="metronome" size={16} />Metronome only</button>
+            : <button className={`chip${prefs.metronome ? ' on' : ''}`} aria-pressed={prefs.metronome} onClick={() => updatePrefs({ metronome: !prefs.metronome })} title="Metronome (M) · Shift+M: metronome only">
+              <Icon name="metronome" size={16} />Metronome</button>}
           <button className={`chip${prefs.countIn ? ' on' : ''}`} aria-pressed={prefs.countIn} onClick={() => updatePrefs({ countIn: !prefs.countIn })} title={`Count ${countInText(prefs)} in before playing (the length is in Settings)`}>Count-in</button>
           <div className="settings-anchor">
             <button className={`icon-button${settingsOpen ? ' on' : ''}`} data-settings-toggle aria-expanded={settingsOpen} aria-label="Settings" title="Settings"
               onClick={() => setSettingsOpen((v) => !v)}><Icon name="settings" /></button>
             {settingsOpen && <Settings prefs={prefs} transpose={scorePrefs.transpose} speed={p.speed} onPrefs={updatePrefs} onClose={closeSettings}
               staves={timeline && timeline.staves.length > 1 ? timeline.staves : []} handVolume={(staff) => p.volumeOf(staff)} onHandVolume={setHandVolume}
+              metronomeOnly={p.metronomeOnly} onMetronomeOnly={(on) => p.setMetronomeOnly(on)}
               onTranspose={(transpose) => updateScorePrefs({ transpose })} onSpeed={setSpeed}
               onVolume={(v) => { engine.current!.volume = v; updatePrefs({ volume: v }) }}
               onRoom={(room) => { engine.current!.room = room; updatePrefs({ room }) }} />}

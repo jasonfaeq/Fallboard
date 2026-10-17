@@ -63,6 +63,10 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
 - [x] **Count-in options**: 1–4 bars or 1–8 beats, and Count in each loop — 2026-10-17 (D-34).
 - [x] **Go to bar**: G (or click the bar number in the dock), type a printed bar number; with
       repeats it goes to the first time the bar is played — 2026-10-17 (D-35).
+- [x] **Metronome upgrades**: Accent the first beat (on by default, as before) and Metronome
+      only (Shift+M) to play along with the playhead and lit notes but no piano — 2026-10-17
+      (D-36). Subdivisions and other click sounds are not built. *Needs Jason: is the
+      accent loud enough against the piano, and do the new controls feel right at the piano?*
 
 ## Later
 
