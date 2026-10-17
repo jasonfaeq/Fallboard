@@ -6,6 +6,7 @@
 // It is built in two steps. First everything is placed by its played position: whole notes from
 // the start in playing order (a repeated bar adds its length again). Then a clock turns positions
 // into score seconds, so every note, step, pass and click follows the same tempo.
+import { ArticulationEnum } from 'opensheetmusicdisplay'
 import type { Fraction, MusicSheet, MusicPartManagerIterator, Note, SourceStaffEntry, VoiceEntry } from 'opensheetmusicdisplay'
 import { PIANO_HIGH, PIANO_LOW, midiFromHalfTone } from '../engine/notes'
 
@@ -30,10 +31,27 @@ export interface Timeline {
 const EPS = 1e-6
 /** on-beat grace notes, in score seconds each */
 const GRACE = 0.07
-const VELOCITY = [78, 64]
+/** Loudness for each dynamic mark, as note velocity (1–127). Music without marks plays at mf. */
+const LEVELS: Record<string, number> = {
+  pppppp: 12, ppppp: 18, pppp: 24, ppp: 32, pp: 42, p: 54, mp: 66, mf: 78, f: 92, ff: 106, fff: 118, ffff: 124, fffff: 127, ffffff: 127,
+}
+/** sudden accents: how much louder the notes at the mark play; the level carries on as before */
+const SUDDEN: Record<string, number> = { sf: 1.3, sfz: 1.3, sffz: 1.4, fz: 1.3, rf: 1.2, rfz: 1.2 }
+/** loud, then soft at once: the notes at the mark play forte, then this level holds */
+const FORTE_PIANO: Record<string, string> = { fp: 'p', sfp: 'p', sfpp: 'pp' }
+/** a hairpin with no mark after it changes the loudness by this much */
+const HAIRPIN_STEP = 14
+/** the lower staves play a little softer than the top one, as before dynamics were read */
+const BALANCE = [1, 64 / 78]
+
+type MultiExpression = MusicSheet['SourceMeasures'][number]['StaffLinkedExpressions'][number][number]
+/** OSMD's ContDynamicEnum (not exported): crescendo = 0, diminuendo = 1 */
+const CRESCENDO = 0
 
 /** Positions are played whole notes. `delay` is in score seconds after the position (grace notes). */
-interface RawSound { midi: number; staff: number; at: number; until: number; delay: number; grace: boolean }
+interface RawSound { midi: number; staff: number; at: number; until: number; delay: number; grace: boolean; accent: number }
+/** a dynamic mark in playing order: a level, a sudden accent, or a hairpin */
+interface Dynamic { at: number; staff: number; level?: number; sudden?: number; after?: number; hairpin?: { louder: boolean; until: number } }
 interface RawMark { note: Note; entry: SourceStaffEntry; measure: number; staff: number; at: number; until: number; delay: number; grace: boolean }
 interface RawStep { at: number; bpm: number; measure: number; pass: number; printed: Fraction }
 interface RawPass { measure: number; number: number; at: number; until: number; bpm: number; beats: number; beat: number }
@@ -129,8 +147,9 @@ export function buildTimeline(sheet: MusicSheet, transpose = 0): Timeline {
     const from = seconds(s.at)
     const end = s.grace ? from + s.delay + GRACE : seconds(s.until)
     const time = s.grace ? from + s.delay : from + Math.min(s.delay, (end - from) / 2)
-    return { midi: s.midi, time, end, release: end, staff: s.staff, velocity: VELOCITY[Math.min(s.staff, 1)] }
+    return { midi: s.midi, time, end, release: end, staff: s.staff, velocity: 0 }
   })
+  setVelocities(sheet, raw, sounds, dynamicsFor(sheet, rawPasses))
   const marks: Mark[] = rawMarks.map((m) => {
     const time = seconds(m.at) + m.delay
     return { note: m.note, entry: m.entry, measure: m.measure, staff: m.staff, time, end: m.grace ? time + GRACE : seconds(m.until) }
@@ -157,6 +176,12 @@ function addNotes(entries: VoiceEntry[], at: number, measure: number, transpose:
     const staff = entry.ParentSourceStaffEntry.ParentStaff.idInMusicSheet
     const voice = entry.ParentVoice
     let offset = 0
+    let accent = 1
+    for (const a of entry.Articulations) {
+      if (a.articulationEnum === ArticulationEnum.accent) accent = Math.max(accent, 1.2)
+      if (a.articulationEnum === ArticulationEnum.strongaccent || a.articulationEnum === ArticulationEnum.marcatoup
+        || a.articulationEnum === ArticulationEnum.marcatodown) accent = Math.max(accent, 1.3)
+    }
     if (entry.IsGrace) {
       offset = graces.get(voice) ?? 0
       graces.set(voice, offset + GRACE)
@@ -173,10 +198,85 @@ function addNotes(entries: VoiceEntry[], at: number, measure: number, transpose:
       const midi = midiFromHalfTone(note.Pitch.getHalfTone()) + transpose
       if (midi < PIANO_LOW || midi > PIANO_HIGH) continue
       const total = tie ? tie.Notes.reduce((sum, n) => sum + n.Length.RealValue, 0) : length
-      if (grace) sounds.push({ midi, staff, at, until: at, delay: offset, grace })
-      else sounds.push({ midi, staff, at, until: at + total, delay: offset, grace })
+      sounds.push({ midi, staff, at, until: grace ? at : at + total, delay: offset, grace, accent })
     }
   }
+}
+
+/** Dynamic marks and hairpins in playing order. A hairpin ends where OSMD says, else at the next mark. */
+function dynamicsFor(sheet: MusicSheet, passes: RawPass[]): Dynamic[] {
+  const events: Dynamic[] = []
+  const seen = new Map<MultiExpression, number[]>()
+  const hairpins: { event: Dynamic; end: MultiExpression | undefined }[] = []
+  for (const pass of passes) {
+    sheet.SourceMeasures[pass.measure].StaffLinkedExpressions.forEach((list, staff) => {
+      for (const expression of list) {
+        const at = pass.at + expression.Timestamp.RealValue
+        seen.set(expression, [...seen.get(expression) ?? [], at])
+        const mark = expression.InstantaneousDynamic?.DynamicExpression ?? ''
+        if (LEVELS[mark]) events.push({ at, staff, level: LEVELS[mark] })
+        else if (SUDDEN[mark]) events.push({ at, staff, sudden: SUDDEN[mark] })
+        else if (FORTE_PIANO[mark]) events.push({ at, staff, sudden: LEVELS.f, after: LEVELS[FORTE_PIANO[mark]] })
+        const wedge = expression.StartingContinuousDynamic
+        if (wedge) {
+          const event = { at, staff, hairpin: { louder: wedge.DynamicType === CRESCENDO, until: NaN } }
+          events.push(event)
+          hairpins.push({ event, end: wedge.EndMultiExpression })
+        }
+      }
+    })
+  }
+  for (const { event, end } of hairpins) {
+    const until = (end && seen.get(end)?.find((at) => at > event.at + EPS)) ?? NaN
+    event.hairpin!.until = until
+  }
+  return events.sort((a, b) => a.at - b.at || Number(!!a.hairpin) - Number(!!b.hairpin))
+}
+
+/** Each note's velocity from the dynamics of its instrument (D-28). A mark sets every staff of
+ *  the instrument, unless a staff has its own mark at the same moment. A hairpin moves
+ *  gradually to the mark that follows it (within a bar of its end), or one step if none does. */
+function setVelocities(sheet: MusicSheet, raw: RawSound[], sounds: Sound[], events: Dynamic[]) {
+  const forStaff = new Map<number, Dynamic[]>()
+  const kind = (e: Dynamic) => e.hairpin ? 'hairpin' : 'level'
+  for (const staff of sheet.Staves) {
+    const own = new Set(staff.ParentInstrument.Staves.map((s) => s.idInMusicSheet))
+    const id = staff.idInMusicSheet
+    forStaff.set(id, events.filter((e) => own.has(e.staff) && (e.staff === id
+      || !events.some((x) => x.staff === id && Math.abs(x.at - e.at) < EPS && kind(x) === kind(e)))))
+  }
+  raw.forEach((s, i) => {
+    const list = forStaff.get(s.staff) ?? []
+    let level = LEVELS.mf
+    let sudden = 1
+    let hairpin: { from: number; until: number; start: number; target: number } | null = null
+    const settle = (at: number) => {
+      if (!hairpin) return
+      const t = Math.min(1, Math.max(0, (at - hairpin.from) / (hairpin.until - hairpin.from || 1)))
+      level = hairpin.start + (hairpin.target - hairpin.start) * t
+    }
+    for (const e of list) {
+      if (e.at > s.at + EPS) break
+      settle(e.at)
+      const now = Math.abs(e.at - s.at) < EPS
+      if (e.level !== undefined) { level = e.level; hairpin = null }
+      if (e.sudden !== undefined && now) sudden = e.after === undefined ? e.sudden : Math.max(level, e.sudden) / level
+      if (e.after !== undefined && !now) { level = e.after; hairpin = null }
+      if (e.hairpin) {
+        const { louder, until } = e.hairpin
+        const limit = (Number.isNaN(until) ? e.at : until) + 1
+        const next = list.find((x) => x.at > e.at + EPS && x.at <= limit + EPS && x.level !== undefined)
+        const fits = next && next.level !== level && next.level! > level === louder
+        hairpin = {
+          from: e.at, start: level,
+          until: fits ? next.at : Number.isNaN(until) ? e.at + 1 : until,
+          target: fits ? next.level! : Math.max(1, Math.min(127, level + (louder ? HAIRPIN_STEP : -HAIRPIN_STEP))),
+        }
+      }
+    }
+    settle(s.at)
+    sounds[i].velocity = Math.max(1, Math.min(127, Math.round(level * BALANCE[Math.min(s.staff, 1)] * s.accent * sudden)))
+  })
 }
 
 /** Sustain pedal marks in playing order, as [down, up] positions. A "change" lifts and presses

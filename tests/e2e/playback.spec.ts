@@ -100,3 +100,26 @@ test('playback: the sustain pedal holds notes until it lifts', async ({ page }) 
   expect(looped.filter((n) => n.on < 1).every((n) => round(n.off) === 2)).toBe(true)
   expect(errors).toEqual([])
 })
+
+test('playback: dynamics, hairpins and accents set each note’s loudness', async ({ page }) => {
+  const errors = await open(page, 'dynamics.musicxml', 'Dynamics (test)')
+  const velocities = (staff: number) => page.evaluate((s) => window.__piano.timeline!.sounds.filter((x) => x.staff === s).map((x) => x.velocity), staff)
+  // p; a crescendo across bar 2 to the ff that follows it; ff with an accent; a diminuendo to mp.
+  expect(await velocities(0)).toEqual([54, 54, 54, 54, 54, 67, 80, 93, 106, 127, 106, 86, 66, 66, 66, 66])
+  // The left hand follows the marks above it, a little softer, except where it has its own f.
+  expect(await velocities(1)).toEqual([44, 44, 75, 54])
+
+  await record(page)
+  await playUntil(page, 6.2)
+  const notes = await sent(page)
+  expect(notes.filter((n) => n.midi === 72).map((n) => n.velocity).slice(0, 13)).toEqual([54, 54, 54, 54, 54, 67, 80, 93, 106, 127, 106, 86, 66])
+
+  // Without any marks the loudness is as before: 78 for the upper staff, 64 below.
+  await page.getByRole('button', { name: 'Scores' }).click()
+  await page.evaluate(() => { (window as unknown as { previous: unknown }).previous = window.__piano.timeline })
+  await page.getByTestId('import-input').setInputFiles('tests/fixtures/ode-repeat.musicxml')
+  await page.waitForFunction(() => window.__piano.timeline && window.__piano.timeline !== (window as unknown as { previous: unknown }).previous)
+  expect([...new Set(await velocities(0))]).toEqual([78])
+  expect([...new Set(await velocities(1))]).toEqual([64])
+  expect(errors).toEqual([])
+})

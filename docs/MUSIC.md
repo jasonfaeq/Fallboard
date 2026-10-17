@@ -17,8 +17,8 @@ repertoire plan are parked in `parked/midi-trainer/docs/MUSIC.md`.
   picture of the music).
 - What plays: every pitched note in every part, ties merged, repeats and 1st/2nd endings
   followed, tempo marks applied (`<sound tempo>`), sustain pedal marks (lines, Ped./✱ signs
-  and changes; D-27). Not yet performed: dynamics, fermatas, ritardando, trills and other
-  ornaments (ROADMAP Phase R). Grace notes are played quickly on the beat.
+  and changes; D-27), dynamics, hairpins and accents (D-28). Not yet performed: fermatas,
+  ritardando, trills and other ornaments (ROADMAP Phase R). Grace notes are played quickly on the beat.
 
 ### Getting a score from MuseScore
 

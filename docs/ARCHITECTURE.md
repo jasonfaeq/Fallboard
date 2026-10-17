@@ -80,7 +80,15 @@ steps, passes, clicks and pedal marks all go through the same clock. For each st
   `note.Pitch.getHalfTone()` + 12 + transposition. OSMD rewrites `note.halfTone` while a
   transposed sheet is drawn, so the written `Pitch` is used. Grace notes play 70 ms each on
   the beat, delaying their main note. Rests, cue notes and pitches outside A0–C8 are skipped.
-  Loudness is fixed: 78 for the first staff and 64 for the others. Dynamics are not read yet.
+  Loudness comes from the dynamics (below).
+- **Dynamics (D-28):** `InstantaneousDynamic` marks (ppp–fff as velocities 32–118, mf = 78),
+  sudden accents (sf, sfz, fz, rf… ×1.2–1.4 for the notes at the mark; fp/sfp: forte, then p)
+  and hairpins (`StartingContinuousDynamic`, ended at OSMD's `EndMultiExpression`) are read
+  per pass from `StaffLinkedExpressions`. A mark sets every staff of its instrument unless that
+  staff has its own mark at the same moment. A hairpin moves linearly from its start to the
+  mark that follows it within a bar of its end (if that goes the right way), otherwise one
+  step (14) by its end. Accent ×1.2 and marcato ×1.3 on top. Staves below the first play at
+  64/78 of the level, so a score without marks sounds as before (78 and 64).
 - **Marks:** every printed note (tie continuations included), with its time span, so the
   sheet can light it.
 - **Pedal (D-27):** OSMD puts sustain-pedal marks on its `MultiExpression`s

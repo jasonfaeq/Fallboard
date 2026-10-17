@@ -31,8 +31,9 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
       2026-10-14 (D-23). *Needs Jason: the transcriptions are still unconfirmed by ear.*
 - [ ] **Jason tries real MuseScore downloads**: import a few scores and report anything drawn
       or played wrong. *Needs Jason.*
-- [ ] 🔀 **Dynamics in playback**: p/f marks and hairpins set the loudness. Today the upper
-      staff plays at one fixed loudness and the others slightly softer.
+- [x] **Dynamics in playback**: p/f marks, sf/fp, hairpins and accents set each note's
+      loudness; without marks it plays as before — 2026-10-17 (D-28). *Needs Jason: is the
+      range from pp to ff right on the sampled piano?*
 - [x] **Pedal marks** in playback (sustain): lines, Ped./✱ signs and changes hold notes until
       the pedal lifts — 2026-10-17 (D-27). *Needs Jason: does the pedalling sound natural?*
 - [ ] 🔀 **Ornaments and timing marks**: trills, turns, fermatas, ritardando. Grace notes are

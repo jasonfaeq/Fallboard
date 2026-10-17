@@ -226,3 +226,14 @@ still down at the end lifts there. *Computing it in the timeline keeps the playe
 the result testable; seek, pause and loops already stop every note, so nothing can hang.*
 To get there the timeline now places everything by played position first and converts to
 seconds with one clock, which the tempo marks of D-29 also use.
+
+**D-28 · 2026-10-17 · How dynamics are played** — Each note's velocity comes from the marks
+before it: ppp 32, pp 42, p 54, mp 66, mf 78, f 92, ff 106, fff 118; music without marks
+plays at mf, and lower staves at 64/78 of the level, exactly today's 78 and 64. sf, sfz, fz,
+rf make the notes at the mark 1.2–1.4× louder; fp and sfp play forte, then p. Accents add
+×1.2, marcato ×1.3. **A mark sets every staff of its instrument** unless a staff has its own
+mark at the same moment: MuseScore applies dynamics to the whole part and usually writes them
+on the upper staff, so the left hand would otherwise never change. **A hairpin** grows linearly
+from its start to the mark that follows it, if that mark comes within a bar of the hairpin's
+end and goes the right way; otherwise it moves one step (14) by its own end and stays there.
+*Simple rules that match how the marks are written; the numbers need Jason's ear.*
