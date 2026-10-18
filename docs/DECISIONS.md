@@ -312,3 +312,10 @@ says so and one click turns the music back on; Shift+M toggles it. The accented 
 already existed (a higher, louder click); it is now a setting, on by default, that also
 covers the count-in. *The accent's level and pitch were left as they were for Jason to
 judge by ear.*
+
+**D-37 · 2026-10-18 · Vercel hosts the app as a plain Vite project** — The app is one static
+Vite build with no backend, so it deploys as an ordinary Vercel project: Vercel detects Vite,
+runs `npm run build` and serves `dist/`. There is no `vercel.json`; there are no client routes
+to rewrite. `.vercelignore` keeps Jason's `public/scores/` (and other local files) out of CLI
+deploys, since the CLI doesn't read `.gitignore`. *Vercel Services was considered and dropped:
+nothing calls anything, and the parked trainer can't build on its own and stays parked.*

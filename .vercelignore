@@ -1,0 +1,9 @@
+# The Vercel CLI does not read .gitignore, so a `vercel` deploy from this folder would
+# upload these too. public/scores/ would end up in the public build (MUSIC.md, D-37).
+public/scores/
+dist
+.env
+.env.*
+test-results/
+playwright-report/
+.qa/
