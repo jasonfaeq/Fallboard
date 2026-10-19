@@ -1,6 +1,6 @@
 # Architecture
 
-**Status (2026-10-19): the sheet music reader, as built (D-20–43).** The MIDI trainer's
+**Status (2026-10-19): the sheet music reader, as built (D-20–44).** The MIDI trainer's
 architecture (input, mission runner, matcher, bots) is parked in
 `parked/midi-trainer/docs/ARCHITECTURE.md`. Keep this file true: when you build or change a
 part, describe how it actually works.
@@ -77,6 +77,23 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   make the workspace inert and restore focus to their opener when closed (`ui/useDialog.ts`).
   Escape also closes dialogs while a text input has focus; reader shortcuts do not fire in
   modal dialogs, and buttons retain native keyboard activation.
+- **Listening room** (`ui/ListeningRoom.tsx`, D-44): an optional setlist presentation,
+  launched beside Play setlist in the library, or from a running queue's Listening room
+  button. A large sleeve reuses the current score's original cover; title/composer,
+  progress, previous/play/next and Up next form the main surface. The ordinary reader
+  remains mounted but hidden so OSMD can load the next score. Back to score (Escape)
+  restores the preceding view and keeps playing music running; a pending title-card start
+  is cancelled. End setlist stops and cancels the queue. Manual score opens/imports also
+  leave the room. The room itself is not restored on reload.
+  Before each piece, including the first, a title card gives 0/3/6/10 seconds of breathing
+  space (default 3, remembered). Hold/Resume and Start now control the pause. The piano
+  starts from the launch gesture; the pause waits for score/audio readiness. Each piece
+  still uses its saved speed, transposition and hand volumes without its saved loop;
+  the saved loop itself is preserved. Count-in, if enabled, follows the title card.
+  Opening Scores/help/sessions or hiding the tab holds the countdown and pauses playing
+  music, requiring an explicit resume. Completion shows a finish card, Replay setlist
+  and View sessions. Reader activity recaps exclude the pauses. Title changes animate
+  once, with reduced motion suppressing that animation. No images or music are fetched.
 - **Previews** (`ui/useScorePreview.ts`, D-40): explicit auditions of up to eight score
   seconds from the first note, at original tempo. A detached OSMD instance parses without
   drawing, then builds the normal timeline. A separate Player shares the engine, so the
@@ -165,6 +182,13 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   interval following an active main-player sample, capped at the remaining score time.
   Count-ins, pauses, previews, seeks and the ringing tail add no duration. Passage entries,
   resume and loop revisits count as visits. `Date.now()` supplies history labels only.
+- **Listening pauses** (`reader/listening.ts`): the pure ListeningBreak tracks remaining
+  real seconds from `AudioContext.currentTime` samples, independent of playback speed.
+  The existing redraw loop wakes it; frame counts and wall time never determine the
+  duration. Loading, a suspended context and held/hidden time add no elapsed pause. Once
+  the clock reaches zero, the normal Player schedules playback on the audio clock.
+  Cancellation clears the pending pause and auto-play request; asynchronous file loads
+  retain the existing request guard. There is no delayed wall-clock callback to fire later.
 - **Count-in** (D-34): `countInLength` bars (the bar's counted beats each) or beats at the
   beat length where playback starts; a click a whole number of bars before the start is
   accented. The transport starts that many beats early and the state is `countIn` until it
@@ -313,7 +337,8 @@ separately. The page pauses playback when it is hidden.
   file name, date) and `data` (the file's bytes; for a MuseScore file, the MusicXML it was
   converted to). If storage fails, the score still opens but is not kept.
 - `reader/prefs.ts`: localStorage `piano-trainer:prefs` (view, rows, theme, note names,
-  lighting, `stageScene` (studio/hall/velvet, invalid values fall back to studio), musical
+  lighting, `stageScene` (studio/hall/velvet, invalid values fall back to studio),
+  `listeningGap` (0/3/6/10 seconds, invalid values fall back to 3), musical
   context (off by default), metronome, count-in with its length, unit and Count in each loop, volume, room, Speed up loops with its step, start and target, keys
   split, last score) and `piano-trainer:score:<id>` (speed,
   transposition, each staff's volume as `volumes`; an older `muted` list is read as volume 0;
@@ -384,6 +409,13 @@ during playback without changing speed/loop or the audio Room, sustain traces af
 lifts, pedal changes, seeks, muting and transposition, Lighting off and reduced motion.
 All three scenes are checked at 1440/1024/768/390/320 px with reachable controls; desktop
 and compact captures live under `.qa/`.
+
+`listening-room.spec.ts` injects audio-clock samples to check loading/holds/suspension/
+cancellation, then exercises launch, saved score settings/loop preservation, returning to
+the reader during playback, hold/resume/start-now, real pauses between automatic pieces,
+music-only recaps, completion/replay, pending-load cancellation, manual score opening,
+tab hiding, preview browsing and reload without autoplay. Sleeve/title/controls are
+checked at 1440/1024/768/390/320 px, with reduced motion and `.qa/` captures.
 
 `reader-ideas.spec.ts` exercises favourites and setlist editing/persistence/next/end,
 automatic advancement after completion, preview cancellation and main-score preservation,

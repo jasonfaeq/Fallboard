@@ -405,3 +405,24 @@ particle state. Lighting at zero and reduced motion suppress them; keys still li
 their written ends and musical colours remain readable. The scene architecture is static,
 and its controls fade with the transport. *The piano sound and score timing stay as built;
 Jason needs to judge the visual comfort and pedal correspondence at his piano.*
+
+**D-44 · 2026-10-19 · Listening room presents a setlist with space between pieces** — Jason
+asked to build the Listening room concept. It is an explicit alternative to ordinary
+Play setlist, and can also be opened from a running queue. The full-stage presentation
+shows a large version of the score's original cover, title/composer, progress, transport
+and the next piece. It hides the reader while retaining its mounted parser and previous
+view. Back to score restores that view, leaving playing music running but cancelling a
+pending start; End setlist stops and cancels. A finish card offers replay and session
+history. The presentation is temporary and never auto-restored on reload.
+
+Title cards before the first and subsequent pieces offer 0/3/6/10 real seconds of
+breathing space (default 3, remembered), with Hold/Resume and Start now. A pure pause
+clock receives `AudioContext.currentTime`, waits for score/piano readiness, excludes
+held/suspended time, and asks the existing Player to start when elapsed. Opening a
+library/help/history panel or hiding the tab pauses music and holds a pending card until
+the user resumes. Ending, switching scores or returning to the reader cancels pending
+starts, including async loads. Score speed, transposition, hand levels and count-in still
+apply; saved loops are temporarily ignored as in D-40 and remain saved. Recaps count music
+only. Title animations respect reduced motion. *No dependency, remote asset, musical
+timer based on wall time, recording or performance scoring is added. Jason needs to
+judge the pacing and transitions by ear.*

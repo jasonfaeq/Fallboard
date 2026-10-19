@@ -85,6 +85,13 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
       and reduced motion control the decoration. *Needs Jason: judge scene readability
       and lighting comfort at the piano, and confirm the visual pedal tails against sound.*
 
+- [x] **Listening room**: optional setlist presentation with matching score sleeves,
+      title cards, Up next, progress and transport; remembered 0/3/6/10-second breathing
+      space, Hold/Resume, Start now, completion/replay and session history — 2026-10-19
+      (D-44). Pauses use the audio clock and are excluded from recaps; tab hiding/browsing
+      holds them. Returning to the reader preserves playing music, and cancels pending
+      starts. *Needs Jason: judge the title-card pacing, transitions and sound by ear.*
+
 ## Reader ideas — built 2026-10-19
 
 - [x] **Collection**: original score-cover designs, favourites, editable ordered setlists

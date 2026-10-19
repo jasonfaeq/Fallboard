@@ -15,7 +15,7 @@ interface Props {
   onClose: () => void
   collection: Collection
   onCollection: (collection: Collection) => void
-  onPlaySetlist: (setlist: Setlist) => void
+  onPlaySetlist: (setlist: Setlist, listening?: boolean) => void
   preview: { id: string; loading: boolean; error: string; start: (entry: ScoreEntry) => Promise<void>; stop: () => void }
 }
 
@@ -103,6 +103,7 @@ export default function Library({ current, builtIn, imported, onOpen, onImport, 
         <div className="setlist-picker"><select aria-label="Selected setlist" value={setlistId} onChange={(e) => { setSetlistId(e.target.value); setSetlistMessage('') }}>
           <option value="">Choose a setlist</option>{collection.setlists.map((list) => <option key={list.id} value={list.id}>{list.name} ({list.scores.length})</option>)}</select>
           {selected && <><button className="primary-button" disabled={!selected.scores.length} onClick={() => onPlaySetlist(selected)}><Icon name="play" size={13} />Play setlist</button>
+            <button className="listening-launch" disabled={!selected.scores.length} onClick={() => onPlaySetlist(selected, true)}><Icon name="volume" size={14} />Listening room</button>
             <button className="icon-button" aria-label="Delete setlist" onClick={() => { onCollection({ ...collection, setlists: collection.setlists.filter((s) => s.id !== selected.id) }); setSetlistId('') }}><Icon name="trash" size={15} /></button></>}
         </div>
         {selected && <form className="setlist-rename" key={selected.id} onSubmit={(e) => { e.preventDefault(); const name = String(new FormData(e.currentTarget).get('rename') ?? '').trim(); if (name) updateSetlist({ name: name.slice(0, 80) }) }}>

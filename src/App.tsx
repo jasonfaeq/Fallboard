@@ -9,6 +9,7 @@ import { BUILT_IN, checkFile, deleteImported, importFile, listImported, loadImpo
 import { ROW_CHOICES, SCORE_DEFAULTS, loadCollection, loadPrefs, loadScorePrefs, loadSessions, saveCollection, savePrefs, saveScorePrefs, saveSessions, type Prefs, type ScoreAnnotation, type ScorePrefs, type Section, type View } from './reader/prefs'
 import type { Collection, Setlist } from './reader/collection'
 import { SessionTracker, type SessionEnd, type SessionRecap } from './reader/sessions'
+import { ListeningBreak } from './reader/listening'
 import { buildPassages, passageLabel } from './reader/passages'
 import SheetView from './ui/SheetView'
 import KeysView from './ui/KeysView'
@@ -26,6 +27,7 @@ import { useScorePreview } from './ui/useScorePreview'
 import ScoreNotes from './ui/ScoreNotes'
 import MusicalContext from './ui/MusicalContext'
 import Sessions, { listeningTime } from './ui/Sessions'
+import ListeningRoom from './ui/ListeningRoom'
 
 declare global {
   interface Window {
@@ -46,7 +48,7 @@ const barsLabel = (t: Timeline, first: number, last: number) => {
   const a = t.passes[first]?.number, b = t.passes[last]?.number
   return a === undefined || b === undefined ? '—' : a === b ? `Bar ${a}` : `Bars ${a}–${b}`
 }
-type PlaybackQueue = Setlist & { index: number }
+type PlaybackQueue = Setlist & { index: number; listening: boolean }
 
 export default function App() {
   const [, redraw] = useReducer((n: number) => n + 1, 0)
@@ -69,6 +71,10 @@ export default function App() {
   const [collection, setCollection] = useState<Collection>(loadCollection)
   const [queue, setQueue] = useState<PlaybackQueue | null>(null)
   const queueRef = useRef(queue); queueRef.current = queue
+  const [roomFinished, setRoomFinished] = useState<PlaybackQueue | null>(null)
+  const listening = !!queue?.listening || !!roomFinished
+  const listeningBreak = useRef(new ListeningBreak())
+  const tickListening = useRef(() => {})
   const autoPlayScore = useRef<string | null>(null)
   const openRequest = useRef(0)
   const [notesMeasure, setNotesMeasure] = useState<number | null>(null)
@@ -90,6 +96,8 @@ export default function App() {
   const [passagesOpen, setPassagesOpen] = useState(false)
   const [controlsHidden, setControlsHidden] = useState(false)
   const reducedMotion = useReducedMotion()
+  const listeningBlocked = useRef(false)
+  listeningBlocked.current = libraryOpen || help || sessionsOpen
   const importInput = useRef<HTMLInputElement>(null)
   const [dropping, setDropping] = useState(false)
   const [pressed, setPressed] = useState<ReadonlySet<number>>(new Set())
@@ -144,6 +152,7 @@ export default function App() {
 
   const openSource = useCallback((next: ScoreEntry, data: ScoreSource, closeLibrary = true, autoPlay = false) => {
     openRequest.current++
+    listeningBreak.current.cancel()
     finishSession.current('switched')
     preview.stop()
     rememberPosition.current()
@@ -180,6 +189,7 @@ export default function App() {
     const file = files[0]
     if (!file) return
     openRequest.current++; autoPlayScore.current = null
+    listeningBreak.current.cancel(); setRoomFinished(null)
     preview.stop(); queueRef.current = null; setQueue(null)
     let data = await file.arrayBuffer()
     const problem = checkFile(file.name, data)
@@ -229,13 +239,52 @@ export default function App() {
         void renameImported(named).then(listImported).then(setImported)
       }
     }
-    if (autoPlay) void p.play()
+    if (autoPlay) {
+      if (queueRef.current?.listening) listeningBreak.current.start(latest.current.prefs.listeningGap)
+      else void p.play()
+    }
   }, [p])
 
   const endQueue = () => {
     openRequest.current++; autoPlayScore.current = null
-    p.pause()
-    queueRef.current = null; setQueue(null)
+    listeningBreak.current.cancel(); p.pause()
+    queueRef.current = null; setQueue(null); setRoomFinished(null)
+  }
+  const leaveListening = () => {
+    listeningBreak.current.cancel(); autoPlayScore.current = null
+    if (!p.playing) p.pause() // Cancel an audio start that has not resolved yet.
+    const current = queueRef.current
+    if (current) { const next = { ...current, listening: false }; queueRef.current = next; setQueue(next) }
+    setRoomFinished(null)
+  }
+  const startRoomPiece = () => {
+    const current = queueRef.current
+    if (!current?.listening || !p.timeline || latest.current.entry?.id !== current.scores[current.index]) return
+    listeningBreak.current.cancel(); void p.play(); redraw()
+  }
+  tickListening.current = () => {
+    const current = queueRef.current, audio = engine.current!.context
+    if (!current?.listening || !listeningBreak.current.pending || !audio) return
+    if (listeningBlocked.current) { listeningBreak.current.hold(audio.currentTime); return }
+    if (listeningBreak.current.tick(audio.currentTime, engine.current!.running && !document.hidden)) startRoomPiece()
+  }
+  const toggleListening = () => {
+    const gap = listeningBreak.current
+    if (gap.pending) {
+      if (gap.paused) { gap.resume(); void engine.current!.start() }
+      else gap.hold(engine.current!.context?.currentTime ?? 0)
+      redraw()
+    } else p.toggle()
+  }
+  const changeListeningGap = (seconds: number) => {
+    updatePrefs({ listeningGap: seconds })
+    if (listeningBreak.current.pending) { listeningBreak.current.change(seconds); redraw() }
+  }
+  const showScores = () => {
+    if (queueRef.current?.listening) {
+      p.pause(); listeningBreak.current.hold(engine.current!.context?.currentTime ?? 0)
+    }
+    setLibraryOpen(true)
   }
   const moveQueue = (direction: number) => {
     const current = queueRef.current
@@ -243,26 +292,31 @@ export default function App() {
     const index = current.index + direction
     const next = [...BUILT_IN, ...imported].find((score) => score.id === current.scores[index])
     if (!next) return
-    p.pause()
+    listeningBreak.current.cancel(); p.pause()
     const updated = { ...current, index }
     queueRef.current = updated; setQueue(updated)
     void open(next, true, true).then((opened) => { if (!opened && queueRef.current === updated) endQueue() })
   }
-  const startSetlist = (setlist: Setlist) => {
+  const startSetlist = (setlist: Setlist, inRoom = false) => {
     const scores = setlist.scores.filter((id) => [...BUILT_IN, ...imported].some((score) => score.id === id))
     if (!scores.length) return
-    preview.stop(); p.pause()
+    listeningBreak.current.cancel(); setRoomFinished(null); preview.stop(); p.pause()
     setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false); setGoToOpen(false); setControlsHidden(false)
-    const next = { ...setlist, scores, index: 0 }
+    if (inRoom) void engine.current!.start() // Prepare the piano from this explicit user gesture.
+    const next = { ...setlist, scores, index: 0, listening: inRoom }
     queueRef.current = next; setQueue(next)
     const first = [...BUILT_IN, ...imported].find((score) => score.id === scores[0])!
     void open(first, true, true).then((opened) => { if (!opened && queueRef.current === next) endQueue() })
   }
   p.onEnded = () => {
     const current = queueRef.current, next = current && current.index + 1 < current.scores.length
-    finishSession.current('completed', !next)
+    finishSession.current('completed', !next && !current?.listening)
     if (next) moveQueue(1)
-    else { queueRef.current = null; setQueue(null) }
+    else {
+      listeningBreak.current.cancel()
+      if (current?.listening) setRoomFinished(current)
+      queueRef.current = null; setQueue(null)
+    }
   }
 
   const setLoop = (range: [number, number] | null, t = latest.current.timeline) => {
@@ -358,7 +412,7 @@ export default function App() {
   // This timer only fades UI chrome. Music continues to use the audio clock.
   useEffect(() => {
     setControlsHidden(false)
-    if (!performanceView || !p.playing || reducedMotion || libraryOpen || help || settingsOpen || sectionsOpen || goToOpen || passagesOpen || notesMeasure !== null || sessionsOpen) return
+    if (!performanceView || listening || !p.playing || reducedMotion || libraryOpen || help || settingsOpen || sectionsOpen || goToOpen || passagesOpen || notesMeasure !== null || sessionsOpen) return
     let timer: ReturnType<typeof setTimeout>
     const reveal = () => {
       setControlsHidden(false)
@@ -377,7 +431,12 @@ export default function App() {
       window.removeEventListener('keydown', reveal)
       window.removeEventListener('focusin', reveal)
     }
-  }, [performanceView, p.playing, reducedMotion, libraryOpen, help, settingsOpen, sectionsOpen, goToOpen, passagesOpen, notesMeasure, sessionsOpen])
+  }, [performanceView, listening, p.playing, reducedMotion, libraryOpen, help, settingsOpen, sectionsOpen, goToOpen, passagesOpen, notesMeasure, sessionsOpen])
+  useEffect(() => {
+    if ((libraryOpen || help || sessionsOpen) && queueRef.current?.listening) {
+      p.pause(); listeningBreak.current.hold(engine.current!.context?.currentTime ?? 0); redraw()
+    }
+  }, [libraryOpen, help, sessionsOpen, p])
 
   // Drag the line between the sheet and the keys.
   const stage = useRef<HTMLElement>(null)
@@ -420,11 +479,13 @@ export default function App() {
     engine.current!.room = latest.current.prefs.room
     let frame = 0
     const tick = () => {
-      if (p.playing) { sampleSession.current(); redraw() }
+      tickListening.current()
+      if (p.playing) sampleSession.current()
+      if (p.playing || listeningBreak.current.pending) redraw()
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
-    const hidden = () => { if (document.hidden) p.pause() }
+    const hidden = () => { if (document.hidden) { p.pause(); listeningBreak.current.hold(engine.current!.context?.currentTime ?? 0); redraw() } }
     const leaving = () => { rememberPosition.current(); finishSession.current('closed') }
     document.addEventListener('visibilitychange', hidden)
     window.addEventListener('pagehide', leaving)
@@ -454,7 +515,8 @@ export default function App() {
       setHelp(false); setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false); setGoToOpen(false)
       setNotesMeasure(null); setSessionsOpen(false)
       if (!panelOpen) {
-        if (passagesOpen) setPassagesOpen(false)
+        if (listening) leaveListening()
+        else if (passagesOpen) setPassagesOpen(false)
         else { setFocused(false); setPerformanceView(false) }
       }
       return
@@ -468,6 +530,12 @@ export default function App() {
     if ((target?.tagName === 'INPUT' && !slider) || ['SELECT', 'TEXTAREA'].includes(target?.tagName) || e.ctrlKey || e.metaKey || e.altKey) return
     const key = e.key
     if (slider && /^(Arrow|Home|End|Page)/.test(key)) return
+    if (listening) {
+      const action = ({ ' ': toggleListening, ArrowLeft: () => moveQueue(-1), ArrowRight: () => moveQueue(1),
+        f: toggleFullscreen, o: showScores, '?': () => setHelp(true) } as Record<string, (() => void) | undefined>)[key.toLowerCase().length === 1 ? key.toLowerCase() : key]
+      if (action && !roomFinished) { e.preventDefault(); action() }
+      return
+    }
     const actions: Record<string, () => void> = {
       ' ': () => p.toggle(), Home: () => p.stop(), ArrowLeft: () => stepBar(-1), ArrowRight: () => stepBar(1),
       ArrowUp: () => setSpeed(p.speed + 0.05), ArrowDown: () => setSpeed(p.speed - 0.05),
@@ -505,8 +573,12 @@ export default function App() {
   const muted = p.muted
   const speed = Math.round(p.speed * 100)
   const view = performanceView ? 'keys' : prefs.view
+  const roomQueue = queue?.listening ? queue : roomFinished
+  const availableScores = [...BUILT_IN, ...imported]
+  const roomScores = roomQueue?.scores.map((id) => availableScores.find((score) => score.id === id)).filter((score): score is ScoreEntry => !!score) ?? []
+  const roomReady = !!roomQueue && !!timeline && entry?.id === roomQueue.scores[roomQueue.index]
 
-  return <div className={`app${focused ? ' is-focused' : ''}${performanceView ? ' is-performance' : ''}${controlsHidden ? ' controls-hidden' : ''}`} data-stage-scene={prefs.stageScene}
+  return <div className={`app${focused ? ' is-focused' : ''}${performanceView ? ' is-performance' : ''}${controlsHidden ? ' controls-hidden' : ''}${listening ? ' is-listening' : ''}`} data-stage-scene={prefs.stageScene}
     onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDropping(true) } }}
     onDragLeave={(e) => { if (e.currentTarget === e.target) setDropping(false) }}
     onDrop={(e) => { e.preventDefault(); setDropping(false); void importFiles(e.dataTransfer.files) }}>
@@ -585,7 +657,7 @@ export default function App() {
         <span className="performance-hands">Gold · right hand <span>·</span> Blue · left hand</span></div></header>}
     {prefs.context && timeline && <MusicalContext timeline={timeline} time={time} playing={p.state === 'playing'} />}
     <main ref={stage} className={`stage${passagesOpen && timeline ? ' with-passages' : ''}`} style={{ '--keys': `${prefs.split * 100}%` } as React.CSSProperties}>
-      <div className={`music-views view-${view}`}>
+      <div className={`music-views view-${view}`} hidden={listening}>
       <section className="sheet-pane" aria-label="Sheet music" hidden={view === 'keys'}>
         <SheetView source={source?.data ?? null} sourceKey={source?.key ?? ''} rows={prefs.rows} theme={prefs.theme}
           transpose={scorePrefs.transpose} timeline={timeline} time={time} playing={p.playing} loop={loop}
@@ -607,20 +679,27 @@ export default function App() {
           onPress={(n) => void press(n)} onRelease={release} />
       </section>}
       </div>
-      {passagesOpen && timeline && <PassageMap key={entry?.id} timeline={timeline} time={time} loop={loop} sections={sections}
+      {roomQueue && <ListeningRoom name={roomQueue.name} scores={roomScores} index={roomQueue.index} time={roomReady ? time : 0}
+        duration={roomReady ? p.end / p.speed : 0} speed={p.speed} ready={roomReady} waiting={listeningBreak.current.pending}
+        remaining={listeningBreak.current.remaining} held={listeningBreak.current.paused} playing={p.playing} countIn={p.state === 'countIn'} complete={!!roomFinished}
+        gap={prefs.listeningGap} error={message?.error ? message.text : p.error || engine.current!.error}
+        onGap={changeListeningGap} onToggle={toggleListening} onNow={startRoomPiece} onMove={moveQueue} onSeek={(at) => p.seek(at)}
+        onClose={leaveListening} onEnd={endQueue} onScores={showScores} onReplay={() => startSetlist(roomQueue, true)} onRecaps={() => setSessionsOpen(true)} />}
+      {!listening && passagesOpen && timeline && <PassageMap key={entry?.id} timeline={timeline} time={time} loop={loop} sections={sections}
         onSeek={(first) => onPick(timeline.passes[first].time, first, false)}
         onLoop={(range) => { if (range) { anchor.current = range[0]; startLoop(range) } else setLoop(null) }}
         onSave={saveSection} onSavedPick={pickSection} onClose={() => setPassagesOpen(false)} />}
 
-      {(message || status) && <div className={`message${message?.error || p.error ? ' error' : ''}`} role="status" data-testid="message">
+      {!listening && (message || status) && <div className={`message${message?.error || p.error ? ' error' : ''}`} role="status" data-testid="message">
         <span>{message?.text || status}</span>
         {message && <button className="icon-button" aria-label="Dismiss" onClick={() => setMessage(null)}><Icon name="close" size={16} /></button>}
       </div>}
-      {p.state === 'countIn' && <div className="count-overlay" aria-hidden="true" key={p.countRemaining}>{p.countRemaining}</div>}
+      {!listening && p.state === 'countIn' && <div className="count-overlay" aria-hidden="true" key={p.countRemaining}>{p.countRemaining}</div>}
     </main>
 
     <footer className="dock">
       {queue && <div className="queue-strip"><span><Icon name="setlist" size={15} />{queue.name} · {queue.index + 1} / {queue.scores.length}</span>
+        <button className="queue-listening" onClick={() => { const next = { ...queue, listening: true }; queueRef.current = next; setQueue(next) }}><Icon name="volume" size={13} />Listening room</button>
         <button className="icon-button" aria-label="Previous setlist piece" disabled={queue.index === 0} onClick={() => moveQueue(-1)}><Icon name="previous" size={16} /></button>
         <button className="icon-button" aria-label="Next setlist piece" disabled={queue.index === queue.scores.length - 1} onClick={() => moveQueue(1)}><Icon name="next" size={16} /></button>
         <button className="icon-button" aria-label="End setlist" onClick={endQueue}><Icon name="close" size={14} /></button></div>}
@@ -698,13 +777,13 @@ export default function App() {
     {performanceView && controlsHidden && <button className="show-controls" onClick={() => setControlsHidden(false)}>Show controls <kbd>Tab</kbd></button>}
     </div>
 
-    {libraryOpen && <Library current={entry?.id ?? ''} builtIn={BUILT_IN} imported={imported} onOpen={(e) => { queueRef.current = null; setQueue(null); void open(e) }}
+    {libraryOpen && <Library current={entry?.id ?? ''} builtIn={BUILT_IN} imported={imported} onOpen={(e) => { listeningBreak.current.cancel(); setRoomFinished(null); queueRef.current = null; setQueue(null); void open(e) }}
       collection={collection} onCollection={updateCollection} onPlaySetlist={startSetlist} preview={preview}
       onImport={(files) => void importFiles(files)} onClose={() => { preview.stop(); setLibraryOpen(false) }}
       onDelete={(e) => void deleteImported(e.id).then(listImported).then((list) => {
         preview.stop()
         updateCollection({ favourites: collection.favourites.filter((id) => id !== e.id), setlists: collection.setlists.map((s) => ({ ...s, scores: s.scores.filter((id) => id !== e.id) })) })
-        if (queueRef.current?.scores.includes(e.id)) endQueue()
+        if (queueRef.current?.scores.includes(e.id) || roomFinished?.scores.includes(e.id)) endQueue()
         setImported(list)
         if (entry?.id === e.id) void open(BUILT_IN[0], false)
       })} />}
