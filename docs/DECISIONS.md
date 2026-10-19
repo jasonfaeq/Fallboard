@@ -351,3 +351,16 @@ boundaries, and save a name. Names reuse D-32's sections and pass indices; custo
 labels show each consecutive run when crossing a repeat. *A printed bar can occur more
 than once, so every repeated pass must retain its own address. No new storage model or
 dependency is needed.*
+
+**D-40 · 2026-10-19 · A local collection with ordered listening setlists** — Jason asked
+to build the remaining reader ideas. Each score gets an original CSS book jacket derived
+from its title and composer; no downloaded art is used. Favourites and named, ordered
+setlists live in localStorage alongside the IndexedDB score library. Setlists can be
+renamed, reordered and edited; Play starts at the beginning of each score, without its
+saved loop, and advances on natural completion. Saved speed, transposition and hand
+volumes still apply. The queue has previous/next and End; opening a score manually ends it.
+An eight-second preview starts at the first note at original tempo with both hands. It
+pauses the main player and uses a separate Player on the same audio engine, preserving
+the main score, position, loop and speed. Closing the library or hiding the page stops
+the preview. *Explicit previews avoid accidental sound; no service, dependency or new
+content licence is needed. Listening quality and transitions need Jason.*

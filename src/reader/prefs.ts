@@ -1,6 +1,7 @@
 // Settings remembered in this browser: the reader's layout, and per score its speed, transposition,
 // each staff's volume, its saved sections, and where you were in it (position and loop). Storage can be unavailable (private windows); everything still works without it.
 import type { Room } from '../engine/audio'
+import { cleanCollection, EMPTY_COLLECTION, type Collection } from './collection'
 
 export type View = 'sheet' | 'keys' | 'both'
 export interface Prefs {
@@ -74,3 +75,5 @@ export function loadScorePrefs(id: string): ScorePrefs {
   return saved
 }
 export const saveScorePrefs = (id: string, prefs: ScorePrefs) => write(`piano-trainer:score:${id}`, prefs)
+export const loadCollection = () => cleanCollection(read('fallboard:collection', EMPTY_COLLECTION))
+export const saveCollection = (collection: Collection) => write('fallboard:collection', collection)

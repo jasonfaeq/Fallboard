@@ -6,7 +6,8 @@ import { Player } from './reader/player'
 import { buildTimeline, passAt, type Timeline } from './reader/timeline'
 import { isMuseScoreFile, museScoreToMusicXml } from './reader/mscz'
 import { BUILT_IN, checkFile, deleteImported, importFile, listImported, loadImported, renameImported, sourceFrom, type ScoreEntry, type ScoreSource } from './reader/library'
-import { ROW_CHOICES, SCORE_DEFAULTS, loadPrefs, loadScorePrefs, savePrefs, saveScorePrefs, type Prefs, type ScorePrefs, type Section, type View } from './reader/prefs'
+import { ROW_CHOICES, SCORE_DEFAULTS, loadCollection, loadPrefs, loadScorePrefs, saveCollection, savePrefs, saveScorePrefs, type Prefs, type ScorePrefs, type Section, type View } from './reader/prefs'
+import type { Collection, Setlist } from './reader/collection'
 import SheetView from './ui/SheetView'
 import KeysView from './ui/KeysView'
 import Library from './ui/Library'
@@ -18,6 +19,7 @@ import Icon from './ui/Icons'
 import { useDialog } from './ui/useDialog'
 import PassageMap from './ui/PassageMap'
 import { useReducedMotion } from './ui/useReducedMotion'
+import { useScorePreview } from './ui/useScorePreview'
 
 declare global {
   interface Window {
@@ -38,6 +40,7 @@ const barsLabel = (t: Timeline, first: number, last: number) => {
   const a = t.passes[first]?.number, b = t.passes[last]?.number
   return a === undefined || b === undefined ? '—' : a === b ? `Bar ${a}` : `Bars ${a}–${b}`
 }
+type PlaybackQueue = Setlist & { index: number }
 
 export default function App() {
   const [, redraw] = useReducer((n: number) => n + 1, 0)
@@ -57,6 +60,12 @@ export default function App() {
   const [loop, setLoopPasses] = useState<[number, number] | null>(null)
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [collection, setCollection] = useState<Collection>(loadCollection)
+  const [queue, setQueue] = useState<PlaybackQueue | null>(null)
+  const queueRef = useRef(queue); queueRef.current = queue
+  const autoPlayScore = useRef<string | null>(null)
+  const openRequest = useRef(0)
+  const preview = useScorePreview(engine.current, p, libraryOpen)
   const [help, setHelp] = useState(false)
   const helpPanel = useRef<HTMLDivElement>(null)
   useDialog(helpPanel, help)
@@ -75,6 +84,7 @@ export default function App() {
   const anchor = useRef(0)
   const latest = useRef({ entry, scorePrefs, timeline, prefs, loop })
   latest.current = { entry, scorePrefs, timeline, prefs, loop }
+  const updateCollection = (next: Collection) => { saveCollection(next); setCollection(next) }
 
   const updatePrefs = (patch: Partial<Prefs>) => setPrefs((old) => { const next = { ...old, ...patch }; savePrefs(next); return next })
   const chooseView = (view: View) => { setPerformanceView(false); updatePrefs({ view }) }
@@ -96,7 +106,9 @@ export default function App() {
     if (Math.abs(position - latest.current.scorePrefs.position) > 1e-3) updateScorePrefs({ position })
   }
 
-  const openSource = useCallback((next: ScoreEntry, data: ScoreSource, closeLibrary = true) => {
+  const openSource = useCallback((next: ScoreEntry, data: ScoreSource, closeLibrary = true, autoPlay = false) => {
+    openRequest.current++
+    preview.stop()
     rememberPosition.current()
     p.load(null)
     const saved = loadScorePrefs(next.id)
@@ -107,23 +119,29 @@ export default function App() {
     setEntry(next)
     setTimeline(null)
     setLoopPasses(null)
+    autoPlayScore.current = autoPlay ? next.id : null
     setSource({ key: `${next.id}:${Date.now()}`, data })
     if (closeLibrary) setLibraryOpen(false)
     setPrefs((old) => { const n = { ...old, lastScore: next.id }; savePrefs(n); return n })
-  }, [p])
+  }, [p, preview.stop])
 
-  const open = useCallback(async (next: ScoreEntry, closeLibrary = true) => {
+  const open = useCallback(async (next: ScoreEntry, closeLibrary = true, autoPlay = false) => {
+    const request = ++openRequest.current
     setMessage(null)
     const builtIn = BUILT_IN.find((b) => b.id === next.id)
-    if (builtIn) { openSource(builtIn, builtIn.xml, closeLibrary); return }
+    if (builtIn) { openSource(builtIn, builtIn.xml, closeLibrary, autoPlay); return true }
     const data = await loadImported(next.id)
-    if (!data) { setMessage({ text: 'That score could not be read from this browser’s storage.', error: true }); return }
-    openSource(next, sourceFrom(data), closeLibrary)
+    if (request !== openRequest.current) return false
+    if (!data) { setMessage({ text: 'That score could not be read from this browser’s storage.', error: true }); return false }
+    openSource(next, sourceFrom(data), closeLibrary, autoPlay)
+    return true
   }, [openSource])
 
   const importFiles = async (files: FileList | File[]) => {
     const file = files[0]
     if (!file) return
+    openRequest.current++; autoPlayScore.current = null
+    preview.stop(); queueRef.current = null; setQueue(null)
     let data = await file.arrayBuffer()
     const problem = checkFile(file.name, data)
     if (problem) { setMessage({ text: problem, error: true }); return }
@@ -157,10 +175,13 @@ export default function App() {
     const built = buildTimeline(sheet.Sheet, sp.transpose)
     // A newly opened score goes back to where it was left; a transposed one stays where it is.
     const range = before !== null ? kept : sp.loop
-    p.load(built, before !== null ? p.time : sp.position)
+    const autoPlay = current?.id === autoPlayScore.current
+    autoPlayScore.current = null
+    p.load(built, autoPlay ? 0 : before !== null ? p.time : sp.position)
     setTimeline(built)
     if (range) anchor.current = range[0]
-    setLoop(range && range[1] < built.passes.length ? range : null, built)
+    if (autoPlay) { setLoopPasses(null); p.setLoop(null) }
+    else setLoop(range && range[1] < built.passes.length ? range : null, built)
     if (current && !current.builtIn) {
       const title = sheet.Sheet.TitleString?.trim(), composer = sheet.Sheet.ComposerString?.trim() ?? ''
       if ((title && title !== current.title) || composer !== current.composer) {
@@ -169,7 +190,40 @@ export default function App() {
         void renameImported(named).then(listImported).then(setImported)
       }
     }
+    if (autoPlay) void p.play()
   }, [p])
+
+  const endQueue = () => {
+    openRequest.current++; autoPlayScore.current = null
+    p.pause()
+    queueRef.current = null; setQueue(null)
+  }
+  const moveQueue = (direction: number) => {
+    const current = queueRef.current
+    if (!current) return
+    const index = current.index + direction
+    const next = [...BUILT_IN, ...imported].find((score) => score.id === current.scores[index])
+    if (!next) return
+    p.pause()
+    const updated = { ...current, index }
+    queueRef.current = updated; setQueue(updated)
+    void open(next, true, true).then((opened) => { if (!opened && queueRef.current === updated) endQueue() })
+  }
+  const startSetlist = (setlist: Setlist) => {
+    const scores = setlist.scores.filter((id) => [...BUILT_IN, ...imported].some((score) => score.id === id))
+    if (!scores.length) return
+    preview.stop(); p.pause()
+    setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false); setGoToOpen(false); setControlsHidden(false)
+    const next = { ...setlist, scores, index: 0 }
+    queueRef.current = next; setQueue(next)
+    const first = [...BUILT_IN, ...imported].find((score) => score.id === scores[0])!
+    void open(first, true, true).then((opened) => { if (!opened && queueRef.current === next) endQueue() })
+  }
+  p.onEnded = () => {
+    const current = queueRef.current, next = current && current.index + 1 < current.scores.length
+    if (next) moveQueue(1)
+    else { queueRef.current = null; setQueue(null) }
+  }
 
   const setLoop = (range: [number, number] | null, t = latest.current.timeline) => {
     setLoopPasses(range)
@@ -353,6 +407,7 @@ export default function App() {
     const target = e.target as HTMLElement
     if (e.key === 'Escape') {
       const panelOpen = help || libraryOpen || settingsOpen || sectionsOpen || goToOpen
+      if (libraryOpen) preview.stop()
       setHelp(false); setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false); setGoToOpen(false)
       if (!panelOpen) {
         if (passagesOpen) setPassagesOpen(false)
@@ -511,6 +566,10 @@ export default function App() {
     </main>
 
     <footer className="dock">
+      {queue && <div className="queue-strip"><span><Icon name="setlist" size={15} />{queue.name} · {queue.index + 1} / {queue.scores.length}</span>
+        <button className="icon-button" aria-label="Previous setlist piece" disabled={queue.index === 0} onClick={() => moveQueue(-1)}><Icon name="previous" size={16} /></button>
+        <button className="icon-button" aria-label="Next setlist piece" disabled={queue.index === queue.scores.length - 1} onClick={() => moveQueue(1)}><Icon name="next" size={16} /></button>
+        <button className="icon-button" aria-label="End setlist" onClick={endQueue}><Icon name="close" size={14} /></button></div>}
       <Scrubber timeline={timeline} time={time} loop={loopTimes} onSeek={(t) => { if (loopTimes && (t < loopTimes.start || t >= loopTimes.end)) setLoop(null); p.seek(t) }} />
       <div className="dock-row">
         <div className="dock-start">
@@ -585,9 +644,13 @@ export default function App() {
     {performanceView && controlsHidden && <button className="show-controls" onClick={() => setControlsHidden(false)}>Show controls <kbd>Tab</kbd></button>}
     </div>
 
-    {libraryOpen && <Library current={entry?.id ?? ''} builtIn={BUILT_IN} imported={imported} onOpen={(e) => void open(e)}
-      onImport={(files) => void importFiles(files)} onClose={() => setLibraryOpen(false)}
+    {libraryOpen && <Library current={entry?.id ?? ''} builtIn={BUILT_IN} imported={imported} onOpen={(e) => { queueRef.current = null; setQueue(null); void open(e) }}
+      collection={collection} onCollection={updateCollection} onPlaySetlist={startSetlist} preview={preview}
+      onImport={(files) => void importFiles(files)} onClose={() => { preview.stop(); setLibraryOpen(false) }}
       onDelete={(e) => void deleteImported(e.id).then(listImported).then((list) => {
+        preview.stop()
+        updateCollection({ favourites: collection.favourites.filter((id) => id !== e.id), setlists: collection.setlists.map((s) => ({ ...s, scores: s.scores.filter((id) => id !== e.id) })) })
+        if (queueRef.current?.scores.includes(e.id)) endQueue()
         setImported(list)
         if (entry?.id === e.id) void open(BUILT_IN[0], false)
       })} />}

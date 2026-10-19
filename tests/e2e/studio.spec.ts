@@ -56,7 +56,7 @@ test('studio: library traps focus and keyboard activation does not trigger the p
   const close = library.getByRole('button', { name: 'Close scores' })
   await close.focus()
   await page.keyboard.press('Shift+Tab')
-  await expect(library.getByRole('button').last()).toBeFocused()
+  await expect(library.getByRole('button', { name: 'Preview score', exact: true }).last()).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(close).toBeFocused()
   await page.keyboard.press('Space')

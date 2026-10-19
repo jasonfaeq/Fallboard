@@ -30,6 +30,15 @@ repertoire plan are parked in `parked/midi-trainer/docs/MUSIC.md`.
   **File → Export →** MusicXML.
 - Then click **Scores → Import a score…** in the reader, or drop the file on the window.
 
+### Collection, previews and context (D-40/41)
+
+Favourites and ordered setlists refer to the scores already in the browser. Covers are
+our own CSS designs; these features add no downloaded music or images. Previews are
+explicitly started, up to eight seconds from the first note at original tempo on the
+same sampled piano. They pause the main player without changing its settings. Setlist
+playback starts each score at its beginning without a saved loop, using its saved speed,
+transposition and hand volumes.
+
 ## Built-in pieces (D-23)
 
 `src/content/scores/*.musicxml`, listed in `BUILT_IN` in `src/reader/library.ts`, and

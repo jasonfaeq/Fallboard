@@ -79,6 +79,11 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
       navigation, draggable/keyboard loop handles and saved names — 2026-10-19 (D-39).
       *Needs Jason: judge the stage at the piano, lighting comfort and sound by ear.*
 
+## Reader ideas — built 2026-10-19
+
+- [x] **Collection**: original score-cover designs, favourites, editable ordered setlists
+      with next/previous and automatic playback, and previews of up to eight seconds at
+      original tempo — 2026-10-19 (D-40). Search, source filters and sorting remain (D-38).
 ## Later
 
 - [ ] Bring back the MIDI trainer on top of the reader (parked roadmap, Phase 1 onwards).

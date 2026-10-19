@@ -35,6 +35,9 @@ export class Player {
   /** the loop came round again; `repeats` counts the times since the loop was set or play began */
   onLoop: (repeats: number) => void = () => {}
   repeats = 0
+  /** Natural completion only (not pause, seek, stop, or switching scores). */
+  onEnded: () => void = () => {}
+  private until = 0
   private position = 0
   private timer: ReturnType<typeof setInterval> | null = null
   private soundCursor = 0
@@ -65,13 +68,14 @@ export class Player {
   load(timeline: Timeline | null, at = 0) {
     this.halt()
     this.timeline = timeline
+    this.until = this.end
     this.loop = null
     this.state = 'stopped'
     this.position = Math.min(at, this.end)
     this.onChange()
   }
 
-  async play() {
+  async play(until = this.end) {
     const timeline = this.timeline
     if (!timeline || this.playing) return
     this.error = ''
@@ -87,6 +91,7 @@ export class Player {
     if (this.position >= this.end - 1e-3) this.position = loop?.start ?? 0
     if (loop && (this.position < loop.start - 1e-3 || this.position >= loop.end - 1e-3)) this.position = loop.start
     this.from = this.position
+    this.until = Math.max(this.from, Math.min(this.end, until))
     this.repeats = 0
     this.countClicks = this.countIn ? this.countClicksBefore(this.from) : []
     const transport = this.engine.transport
@@ -103,7 +108,7 @@ export class Player {
   }
 
   pause() {
-    if (!this.playing) return
+    if (!this.playing) { this.request++; return }
     this.position = this.state === 'countIn' ? this.from : Math.min(this.end, this.engine.transport.beatAt())
     this.halt()
     this.state = 'paused'
@@ -191,7 +196,7 @@ export class Player {
     const horizon = now + LOOKAHEAD
     let beat = transport.beatAt(now)
     if (this.state === 'countIn' && beat >= this.from) { this.state = 'playing'; this.onChange() }
-    const stopAt = this.loop?.end ?? this.end
+    const stopAt = this.loop?.end ?? this.until
     if (this.loop && beat >= this.loop.end) {
       // Jump back to the loop start (or to a count-in before it); anything still ringing past the loop end is cut.
       piano.allNotesOff('score')
@@ -237,11 +242,12 @@ export class Player {
       this.clickCursor++
       if ((this.metronome || this.metronomeOnly) && at >= now - 0.02) this.engine.click(Math.max(now, at), click.accent && this.accent)
     }
-    if (!this.loop && beat >= this.end + RING) {
+    if (!this.loop && beat >= this.until + RING) {
       this.halt()
       this.state = 'stopped'
       this.position = 0
       this.onChange()
+      this.onEnded()
     }
   }
 

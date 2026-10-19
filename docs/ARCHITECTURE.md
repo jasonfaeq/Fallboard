@@ -1,6 +1,6 @@
 # Architecture
 
-**Status (2026-10-19): the sheet music reader, as built (D-20–39).** The MIDI trainer's
+**Status (2026-10-19): the sheet music reader, as built (D-20–40).** The MIDI trainer's
 architecture (input, mission runner, matcher, bots) is parked in
 `parked/midi-trainer/docs/ARCHITECTURE.md`. Keep this file true: when you build or change a
 part, describe how it actually works.
@@ -59,6 +59,24 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
 - **Dock**: the scrubber; then position (left), start/previous/play/next (centre) and tempo
   (right); a separate practice row holds hands, loop with its repeat count, saved sections,
   metronome, count-in and Settings. On compact screens the hands get their own line.
+- **Scores library** (`ui/Library.tsx`, D-40): a centred dialog with an import area, search,
+  All/Imported/Collection/Favourites filters and recent/title/composer sorting. Original
+  CSS covers (`ScoreCover.tsx`) use a stable title/composer hash. Stars save favourites.
+  Setlists can be created, renamed, reordered and deleted; the selected list shows its
+  ordered scores and + adds a library score. Play setlist opens each at its start without
+  its saved loop, retaining speed, transposition and hand levels; natural completion
+  advances, and the dock shows previous/next/End. Manual opens end the queue. Async open
+  requests and pending auto-play can be cancelled. Filters are temporary.
+  Library, notes, sessions and shortcuts dialogs keep focus inside,
+  make the workspace inert and restore focus to their opener when closed (`ui/useDialog.ts`).
+  Escape also closes dialogs while a text input has focus; reader shortcuts do not fire in
+  modal dialogs, and buttons retain native keyboard activation.
+- **Previews** (`ui/useScorePreview.ts`, D-40): explicit auditions of up to eight score
+  seconds from the first note, at original tempo. A detached OSMD instance parses without
+  drawing, then builds the normal timeline. A separate Player shares the engine, so the
+  main player is paused first and keeps its timeline, speed, loop and position. Only an
+  active preview may stop the shared transport; closing an idle library leaves playback
+  running. Close/hide cancels previews and pending loads. Previews are excluded from recaps.
 - The scrubber is keyboard accessible: arrows seek five score seconds, Home/End seek to
   start/end. The sheet/keys divider accepts Up/Down for five percentage-point changes
   (20–75 %, remembered); these keys do not also change playback speed.
@@ -117,6 +135,11 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   frames are used only for drawing.
 - **Loops** jump back when the transport passes the loop end. The jump is checked every
   20 ms, so the first note after the loop point can be up to ~20 ms late.
+- **Completion and preview limits**: `Player.play(until)` optionally limits scheduling and
+  note releases to a score-time endpoint; ordinary playback uses the timeline end. After
+  the existing 0.6 score-second ringing tail, natural completion invokes `onEnded`, which
+  drives setlist advancement and recaps. Pause/seek/stop never invoke it; pause also
+  cancels a pending audio-start request.
 - **Count-in** (D-34): `countInLength` bars (the bar's counted beats each) or beats at the
   beat length where playback starts; a click a whole number of bars before the start is
   accented. The transport starts that many beats early and the state is `countIn` until it
@@ -255,6 +278,9 @@ separately. The page pauses playback when it is hidden.
   saved `sections` as `{ name, first, last }` pass indices, malformed ones dropped; `position`
   in score seconds and `loop` as `[first, last]` pass indices or null). Score settings are
   written at once, not in a React state updater, so the page closing still keeps them.
+- `reader/prefs.ts` also owns `fallboard:collection` (favourite score IDs and named ordered
+  setlists, sanitised by the pure `reader/collection.ts`). Imported-score deletion removes its collection references.
+  No server state or remote service is involved.
 - **Where you were**: the app saves the position whenever the player changes while not
   playing (pause, seek, stop, the end), before another score opens, and on `pagehide`
   (a reload while playing). Opening a score loads its timeline at that position with its loop;
