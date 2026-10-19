@@ -108,6 +108,7 @@ export default function Settings({ prefs, transpose, speed, onPrefs, onTranspose
     {toggle('Accent the first beat', prefs.accent, () => onPrefs({ accent: !prefs.accent }), 'A higher click on beat one of each bar')}
     {toggle('Metronome only', metronomeOnly, () => onMetronomeOnly(!metronomeOnly), 'Mute the music and keep the click, playhead and lit notes, to play it yourself (Shift+M)')}
     <h3>Display</h3>
+    {slider('Lighting', 'Lighting', prefs.lighting, (lighting) => onPrefs({ lighting }))}
     {toggle('Note names', prefs.noteNames, () => onPrefs({ noteNames: !prefs.noteNames }), 'On the keys and falling notes (N)')}
     <div className="setting">
       <div><span>Sheet</span></div>

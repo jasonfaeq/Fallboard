@@ -1,6 +1,6 @@
 # Architecture
 
-**Status (2026-10-19): the sheet music reader, as built (D-20–38).** The MIDI trainer's
+**Status (2026-10-19): the sheet music reader, as built (D-20–39).** The MIDI trainer's
 architecture (input, mission runner, matcher, bots) is parked in
 `parked/midi-trainer/docs/ARCHITECTURE.md`. Keep this file true: when you build or change a
 part, describe how it actually works.
@@ -27,7 +27,7 @@ Layers: `engine/` (sound, clock, note numbers) knows nothing of React or scores.
 (timeline, player, library, prefs, mscz) has no DOM, apart from IndexedDB/localStorage in
 their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and forwards clicks.
 
-## Screen layout (`App.tsx`, D-26, D-38)
+## Screen layout (`App.tsx`, D-26, D-38, D-39)
 
 - **Music desk**: an ivory workspace with a charcoal sidebar (brand, reader, Scores, current
   piece and local-storage reminder). The score heading shows title, composer, printed bar
@@ -37,6 +37,22 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   button here. **Focus mode** (Z, or the Focus button) hides the sidebar and score heading
   to enlarge the music; Z or Escape restores the desk. It is not remembered and does not
   change playback, the selected view, position or loop.
+- **Performance view** (P): a full-width charcoal stage with a larger piano and score
+  heading. It temporarily displays Keys; leaving it restores the saved Sheet/Keys/Both
+  view. Playback, position, speed and loops continue unchanged. View buttons and Z leave
+  performance. Controls fade after 2.4 seconds of inactivity while playing, preserving
+  their layout space to avoid a resize; pointer movement, key presses and focus reveal
+  them. Open panels and keyboard focus keep them visible. Reduced motion keeps controls
+  visible. The UI timer has no role in musical timing.
+- **Passage map** (V, `ui/PassageMap.tsx`): a side panel, or a panel over the stage on compact
+  screens. `reader/passages.ts` groups up to four consecutive played bars, starting another
+  group at a repeat or jump. It shows note-attack density and the current position; selecting
+  a passage seeks to its first pass, and Loop passage sets that range. Loop handles drag
+  to a played bar or move with Left/Right. Named passages reuse saved sections (D-32), so
+  they survive reloads and work in the existing Sections menu. Labels spell out separate
+  bar runs when a custom loop crosses a repeat. They do not guess musical phrase names.
+- Escape dismisses an open dialog/popover first, then the passage map, then performance
+  or focus mode. This keeps adjusting a setting from unexpectedly leaving the stage.
 - **Stage**: the sheet on a card, then the keys. In Both, the line between them drags to
   resize the keys (20–75 % of the stage, double-click resets to 42 %, remembered as
   `split`). Messages float over the stage; the count-in shows a large number.
@@ -202,9 +218,17 @@ The keyboard covers the piece's range rounded out to whole C–B octaves, at lea
 octaves (`keyRange`). Falling notes are drawn on a canvas (3.2 score seconds visible): darker
 lanes over the black keys, bar lines with numbers, octave lines at each C, notes in staff
 colours with a sheen (sounding notes glow), muted staves as outlines, note names when
-enabled. The keys are shaded with SVG gradients under a felt strip; lit keys glow. The SVG keyboard lights the keys the score is sounding;
+enabled. The keys have ivory faces, front lips, bevelled black keys, a wood rail and a felt
+strip; sounding or held keys visibly depress. The SVG keyboard lights the keys the score is sounding;
 keys held with the mouse sound on the `'touch'` piano channel. `data-lit` on the view lists
 the lit notes (used by tests).
+
+Lighting is driven by the active notes and their score velocities on the same `Player.time`:
+soft pools meet the keys and a larger bloom sits behind notes in performance. The Lighting
+slider (0–100 %, default 55 %) affects decorative light, not note colours or sound, and is
+remembered. Muted notes cast no light. `useReducedMotion.ts` listens to the OS preference;
+reduced motion removes decorative light and key-travel transitions, retaining the musical
+position, falling notes and hand colours. There is no independent music animation clock.
 
 ## Audio (`engine/audio.ts`, `engine/piano.ts`)
 
@@ -225,7 +249,7 @@ separately. The page pauses playback when it is hidden.
   file name, date) and `data` (the file's bytes; for a MuseScore file, the MusicXML it was
   converted to). If storage fails, the score still opens but is not kept.
 - `reader/prefs.ts`: localStorage `piano-trainer:prefs` (view, rows, theme, note names,
-  metronome, count-in with its length, unit and Count in each loop, volume, room, Speed up loops with its step, start and target, keys
+  lighting, metronome, count-in with its length, unit and Count in each loop, volume, room, Speed up loops with its step, start and target, keys
   split, last score) and `piano-trainer:score:<id>` (speed,
   transposition, each staff's volume as `volumes`; an older `muted` list is read as volume 0;
   saved `sections` as `{ name, first, last }` pass indices, malformed ones dropped; `position`
@@ -278,6 +302,12 @@ The practice tests wrap `engine.click` and `piano.noteOn` to log what is sent.
 search/filter/sort, modal keyboard focus and native button activation, keyboard seeking
 and split persistence, and workspace bounds at 1440/1024/768/390 px. It saves visual review
 captures of the desktop, night sheet, focus, library and compact layouts under `.qa/`.
+
+`performance.spec.ts` exercises performance entry/exit with an existing loop and speed,
+idle/revealed controls while the audio player keeps advancing, repeated-bar passages,
+dragged and keyboard loop boundaries, named passage persistence, pointer key travel and
+voice release, lighting rendering/persistence/reduced motion, and desktop/compact bounds.
+It saves stage and passage-map captures under `.qa/`.
 
 Not covered: how real MuseScore downloads look and sound, and how the audio feels. Those
 need Jason.

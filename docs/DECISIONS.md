@@ -333,3 +333,21 @@ closed, and reduced-motion preferences are respected. *The score remains the mai
 focus is temporary so the next visit still has an obvious way into the library. The gold
 right hand and blue left hand, audio clock, local storage and existing reader tools stay
 the same. No dependencies, remote fonts or services were added.*
+
+**D-39 · 2026-10-19 · A performance stage and a map of played passages** — Jason chose the
+Performance concept and approved building the physical piano, performance view and passage
+map first. P opens a full-width keys stage, keeping the previous reading view for when it
+closes. Controls fade while playing after 2.4 seconds without input, and reveal on pointer
+movement, keyboard input or focus; open panels and reduced motion keep them visible. The
+piano has visible key travel, ivory faces, black-key bevels, front lips, felt and a wood rail.
+Lighting follows active score notes and authored velocities, with a remembered 0–100 %
+control; reduced motion removes decorative light and movement transitions. *This uses the
+same score time and sampled piano; the UI idle timer never schedules notes.*
+
+V opens a passage map with note density and current position. Automatic passages contain
+up to four consecutive played bars and split at repeats/jumps. They are navigation groups,
+not inferred musical phrases. Select to seek, loop the range, drag or use arrows on its
+boundaries, and save a name. Names reuse D-32's sections and pass indices; custom loop
+labels show each consecutive run when crossing a repeat. *A printed bar can occur more
+than once, so every repeated pass must retain its own address. No new storage model or
+dependency is needed.*

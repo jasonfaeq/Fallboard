@@ -16,6 +16,8 @@ import Sections from './ui/Sections'
 import GoToBar from './ui/GoToBar'
 import Icon from './ui/Icons'
 import { useDialog } from './ui/useDialog'
+import PassageMap from './ui/PassageMap'
+import { useReducedMotion } from './ui/useReducedMotion'
 
 declare global {
   interface Window {
@@ -27,7 +29,7 @@ declare global {
 const SHORTCUTS: [string, string][] = [
   ['Space', 'Play / pause'], ['Home', 'Back to the start'], ['← →', 'Previous / next bar'], ['G', 'Go to a bar number'], ['↑ ↓', 'Faster / slower'],
   ['L', 'Loop this bar (Shift+click a bar to stretch the loop)'], ['[ · ]', 'Loop the previous / next saved section'], ['M', 'Metronome'], ['Shift+M', 'Metronome only: mute the music, keep the click'], ['1 – 4', 'Rows of music'],
-  ['S · K · B', 'Sheet · Keys · Both'], ['N', 'Note names'], ['Z', 'Focus mode'], ['F', 'Full screen'], ['O', 'Scores'], ['?', 'This list'],
+  ['S · K · B', 'Sheet · Keys · Both'], ['N', 'Note names'], ['P', 'Performance view'], ['V', 'Passage map'], ['Z', 'Focus mode'], ['F', 'Full screen'], ['O', 'Scores'], ['?', 'This list'],
 ]
 const VIEWS: [View, string][] = [['sheet', 'Sheet'], ['keys', 'Keys'], ['both', 'Both']]
 const loopLabel = (first: number, last: number) => first === last ? `Loop bar ${first}` : `Loop bars ${first}–${last}`
@@ -63,6 +65,10 @@ export default function App() {
   const [goToOpen, setGoToOpen] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const [focused, setFocused] = useState(false)
+  const [performanceView, setPerformanceView] = useState(false)
+  const [passagesOpen, setPassagesOpen] = useState(false)
+  const [controlsHidden, setControlsHidden] = useState(false)
+  const reducedMotion = useReducedMotion()
   const importInput = useRef<HTMLInputElement>(null)
   const [dropping, setDropping] = useState(false)
   const [pressed, setPressed] = useState<ReadonlySet<number>>(new Set())
@@ -71,6 +77,8 @@ export default function App() {
   latest.current = { entry, scorePrefs, timeline, prefs, loop }
 
   const updatePrefs = (patch: Partial<Prefs>) => setPrefs((old) => { const next = { ...old, ...patch }; savePrefs(next); return next })
+  const chooseView = (view: View) => { setPerformanceView(false); updatePrefs({ view }) }
+  const togglePerformance = () => { setPerformanceView((v) => !v); setFocused(false); setControlsHidden(false) }
   // Saved at once (not in a state updater), so a page that is closing still keeps it.
   const updateScorePrefs = (patch: Partial<ScorePrefs>) => {
     const next = { ...latest.current.scorePrefs, ...patch }
@@ -212,10 +220,10 @@ export default function App() {
   // Saved sections: named loops, kept per score in the order they come in the piece.
   const sections = scorePrefs.sections
   const activeSection = loop ? sections.findIndex((s) => s.first === loop[0] && s.last === loop[1]) : -1
-  const saveSection = (name: string) => {
-    if (!loop) return
-    const kept = sections.filter((s) => s.first !== loop[0] || s.last !== loop[1])
-    const next: Section[] = [...kept, { name, first: loop[0], last: loop[1] }]
+  const saveSection = (name: string, range = loop) => {
+    if (!range) return
+    const kept = sections.filter((s) => s.first !== range[0] || s.last !== range[1])
+    const next: Section[] = [...kept, { name, first: range[0], last: range[1] }]
     updateScorePrefs({ sections: next.sort((a, b) => a.first - b.first || a.last - b.last) })
   }
   const pickSection = (index: number) => {
@@ -252,6 +260,30 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', changed)
   }, [])
   const closeSettings = useCallback(() => setSettingsOpen(false), [])
+
+  // This timer only fades UI chrome. Music continues to use the audio clock.
+  useEffect(() => {
+    setControlsHidden(false)
+    if (!performanceView || !p.playing || reducedMotion || libraryOpen || help || settingsOpen || sectionsOpen || goToOpen || passagesOpen) return
+    let timer: ReturnType<typeof setTimeout>
+    const reveal = () => {
+      setControlsHidden(false)
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        if (!document.activeElement?.matches(':focus-visible') && !document.activeElement?.matches('input,select,textarea')) setControlsHidden(true)
+      }, 2400)
+    }
+    reveal()
+    window.addEventListener('pointermove', reveal)
+    window.addEventListener('keydown', reveal)
+    window.addEventListener('focusin', reveal)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('pointermove', reveal)
+      window.removeEventListener('keydown', reveal)
+      window.removeEventListener('focusin', reveal)
+    }
+  }, [performanceView, p.playing, reducedMotion, libraryOpen, help, settingsOpen, sectionsOpen, goToOpen, passagesOpen])
 
   // Drag the line between the sheet and the keys.
   const stage = useRef<HTMLElement>(null)
@@ -322,7 +354,10 @@ export default function App() {
     if (e.key === 'Escape') {
       const panelOpen = help || libraryOpen || settingsOpen || sectionsOpen || goToOpen
       setHelp(false); setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false); setGoToOpen(false)
-      if (!panelOpen) setFocused(false)
+      if (!panelOpen) {
+        if (passagesOpen) setPassagesOpen(false)
+        else { setFocused(false); setPerformanceView(false) }
+      }
       return
     }
     if (target?.closest('[aria-modal="true"]')) {
@@ -338,8 +373,9 @@ export default function App() {
       ' ': () => p.toggle(), Home: () => p.stop(), ArrowLeft: () => stepBar(-1), ArrowRight: () => stepBar(1),
       ArrowUp: () => setSpeed(p.speed + 0.05), ArrowDown: () => setSpeed(p.speed - 0.05),
       M: () => p.setMetronomeOnly(!p.metronomeOnly), l: loopHere, '[': () => stepSection(-1), ']': () => stepSection(1), m: () => updatePrefs({ metronome: !prefs.metronome }), n: () => updatePrefs({ noteNames: !prefs.noteNames }),
-      s: () => updatePrefs({ view: 'sheet' }), k: () => updatePrefs({ view: 'keys' }), b: () => updatePrefs({ view: 'both' }),
-      g: () => { if (timeline) setGoToOpen(true) }, f: toggleFullscreen, z: () => setFocused((v) => !v), o: () => setLibraryOpen((v) => !v), '?': () => setHelp((v) => !v),
+      s: () => chooseView('sheet'), k: () => chooseView('keys'), b: () => chooseView('both'),
+      p: togglePerformance, v: () => { if (timeline) setPassagesOpen((v) => !v) },
+      g: () => { if (timeline) setGoToOpen(true) }, f: toggleFullscreen, z: () => { setPerformanceView(false); setFocused((v) => !v) }, o: () => setLibraryOpen((v) => !v), '?': () => setHelp((v) => !v),
       '1': () => updatePrefs({ rows: 1 }), '2': () => updatePrefs({ rows: 2 }), '3': () => updatePrefs({ rows: 3 }), '4': () => updatePrefs({ rows: 4 }),
     }
     const action = actions[key === 'M' && e.shiftKey ? 'M' : key.length === 1 ? key.toLowerCase() : key]
@@ -368,8 +404,9 @@ export default function App() {
     p.state === 'countIn' ? `Count-in · ${p.countRemaining}` : '')
   const muted = p.muted
   const speed = Math.round(p.speed * 100)
+  const view = performanceView ? 'keys' : prefs.view
 
-  return <div className={`app${focused ? ' is-focused' : ''}`}
+  return <div className={`app${focused ? ' is-focused' : ''}${performanceView ? ' is-performance' : ''}${controlsHidden ? ' controls-hidden' : ''}`}
     onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDropping(true) } }}
     onDragLeave={(e) => { if (e.currentTarget === e.target) setDropping(false) }}
     onDrop={(e) => { e.preventDefault(); setDropping(false); void importFiles(e.dataTransfer.files) }}>
@@ -413,18 +450,22 @@ export default function App() {
     <div className="topbar">
       <button className="icon-button mobile-scores" aria-label="Scores" onClick={() => setLibraryOpen(true)} title="Scores (O)"><Icon name="scores" /></button>
       <div className="segmented view-picker" role="group" aria-label="View">
-        {VIEWS.map(([value, label]) => <button key={value} className={prefs.view === value ? 'on' : ''} aria-pressed={prefs.view === value}
-          title={`${label} (${label[0]})`} onClick={() => updatePrefs({ view: value })}><Icon name={value === 'sheet' ? 'sheet' : value === 'keys' ? 'keyboard' : 'both'} size={16} />{label}</button>)}
+        {VIEWS.map(([value, label]) => <button key={value} className={view === value ? 'on' : ''} aria-pressed={view === value}
+          title={`${label} (${label[0]})`} onClick={() => chooseView(value)}><Icon name={value === 'sheet' ? 'sheet' : value === 'keys' ? 'keyboard' : 'both'} size={16} />{label}</button>)}
       </div>
       <div className="segmented rows" role="group" aria-label="Rows" title="Rows of music (1–4)">
         <span className="label">Rows</span>
-        {ROW_CHOICES.map((n) => <button key={n} className={prefs.rows === n ? 'on' : ''} aria-pressed={prefs.rows === n} disabled={prefs.view === 'keys'}
+        {ROW_CHOICES.map((n) => <button key={n} className={prefs.rows === n ? 'on' : ''} aria-pressed={prefs.rows === n} disabled={view === 'keys'}
           aria-label={`${n} row${n > 1 ? 's' : ''}`} onClick={() => updatePrefs({ rows: n })}>{n}</button>)}
       </div>
       <div className="topbar-end">
+        <button className={`map-button${passagesOpen ? ' on' : ''}`} aria-label="Passage map" aria-expanded={passagesOpen} disabled={!timeline}
+          title="Passage map (V)" onClick={() => setPassagesOpen((v) => !v)}><Icon name="map" size={16} /><span>Passages</span></button>
+        <button className={`performance-button${performanceView ? ' on' : ''}`} aria-label="Performance view" aria-pressed={performanceView}
+          title="Performance view (P)" onClick={togglePerformance}><Icon name="stage" size={16} /><span>{performanceView ? 'Leave stage' : 'Perform'}</span></button>
         <button className="icon-button paper-toggle" onClick={() => updatePrefs({ theme: prefs.theme === 'paper' ? 'night' : 'paper' })}
           aria-label="Night sheet" aria-pressed={prefs.theme === 'night'} title="Switch paper / night sheet"><Icon name={prefs.theme === 'paper' ? 'moon' : 'sun'} /></button>
-        <button className={`focus-button${focused ? ' on' : ''}`} onClick={() => setFocused((v) => !v)} aria-label="Focus mode" aria-pressed={focused} title="Focus mode (Z)">
+        <button className={`focus-button${focused ? ' on' : ''}`} onClick={() => { setPerformanceView(false); setFocused((v) => !v) }} aria-label="Focus mode" aria-pressed={focused} title="Focus mode (Z)">
           <Icon name="focus" size={16} /><span>{focused ? 'Leave focus' : 'Focus'}</span></button>
         <button className="icon-button" onClick={toggleFullscreen} aria-label={fullscreen ? 'Leave full screen' : 'Full screen'} title="Full screen (F)">
           <Icon name={fullscreen ? 'shrink' : 'expand'} /></button>
@@ -432,13 +473,17 @@ export default function App() {
       </div>
     </div>
 
-    <main ref={stage} className={`stage view-${prefs.view}`} style={{ '--keys': `${prefs.split * 100}%` } as React.CSSProperties}>
-      <section className="sheet-pane" aria-label="Sheet music" hidden={prefs.view === 'keys'}>
+    {performanceView && <header className="performance-heading"><div><p className="eyebrow">FALLBOARD · PERFORMANCE</p>
+      <h1>{entry?.title ?? 'Your music, centre stage.'}</h1><p>{entry?.composer || entry?.file}</p></div>
+      <span>Gold · right hand <span>·</span> Blue · left hand</span></header>}
+    <main ref={stage} className={`stage${passagesOpen && timeline ? ' with-passages' : ''}`} style={{ '--keys': `${prefs.split * 100}%` } as React.CSSProperties}>
+      <div className={`music-views view-${view}`}>
+      <section className="sheet-pane" aria-label="Sheet music" hidden={view === 'keys'}>
         <SheetView source={source?.data ?? null} sourceKey={source?.key ?? ''} rows={prefs.rows} theme={prefs.theme}
           transpose={scorePrefs.transpose} timeline={timeline} time={time} playing={p.playing} loop={loop}
           onLoaded={onLoaded} onError={(text) => setMessage({ text, error: true })} onPick={onPick} />
       </section>
-      {prefs.view === 'both' && <div className="divider" role="separator" aria-orientation="horizontal" aria-label="Drag to resize the keys"
+      {view === 'both' && <div className="divider" role="separator" aria-orientation="horizontal" aria-label="Drag to resize the keys"
         title="Drag to resize · arrow keys to adjust · double-click to reset" tabIndex={0}
         aria-valuemin={20} aria-valuemax={75} aria-valuenow={Math.round(prefs.split * 100)}
         onKeyDown={(e) => {
@@ -448,9 +493,15 @@ export default function App() {
         }}
         onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)} onPointerMove={dragSplit}
         onDoubleClick={() => updatePrefs({ split: 0.42 })}><span /><small>KEYS</small><span /></div>}
-      {prefs.view !== 'sheet' && <section className="keys-pane" aria-label="Keys">
-        <KeysView timeline={timeline} time={time} names={prefs.noteNames} muted={muted} pressed={pressed} onPress={(n) => void press(n)} onRelease={release} />
+      {view !== 'sheet' && <section className="keys-pane" aria-label="Keys">
+        <KeysView timeline={timeline} time={time} names={prefs.noteNames} muted={muted} pressed={pressed} lighting={prefs.lighting} performanceView={performanceView}
+          onPress={(n) => void press(n)} onRelease={release} />
       </section>}
+      </div>
+      {passagesOpen && timeline && <PassageMap key={entry?.id} timeline={timeline} time={time} loop={loop} sections={sections}
+        onSeek={(first) => onPick(timeline.passes[first].time, first, false)}
+        onLoop={(range) => { if (range) { anchor.current = range[0]; startLoop(range) } else setLoop(null) }}
+        onSave={saveSection} onSavedPick={pickSection} onClose={() => setPassagesOpen(false)} />}
 
       {(message || status) && <div className={`message${message?.error || p.error ? ' error' : ''}`} role="status" data-testid="message">
         <span>{message?.text || status}</span>
@@ -531,6 +582,7 @@ export default function App() {
           </div>
       </div>
     </footer>
+    {performanceView && controlsHidden && <button className="show-controls" onClick={() => setControlsHidden(false)}>Show controls <kbd>Tab</kbd></button>}
     </div>
 
     {libraryOpen && <Library current={entry?.id ?? ''} builtIn={BUILT_IN} imported={imported} onOpen={(e) => void open(e)}

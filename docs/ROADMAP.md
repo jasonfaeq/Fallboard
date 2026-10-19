@@ -73,6 +73,12 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
       sorting, modal keyboard focus, keyboard seeking and split resizing — 2026-10-19
       (D-38). *Needs Jason: judge the new workspace at the piano and confirm playback by ear.*
 
+- [x] **Performance and passages**: physical key faces, lips, bevels, wood rail and key
+      travel; performance view (P) with responsive lighting and controls that fade during
+      playback; Lighting setting and reduced motion; passage map (V), repeated-bar
+      navigation, draggable/keyboard loop handles and saved names — 2026-10-19 (D-39).
+      *Needs Jason: judge the stage at the piano, lighting comfort and sound by ear.*
+
 ## Later
 
 - [ ] Bring back the MIDI trainer on top of the reader (parked roadmap, Phase 1 onwards).

@@ -1,9 +1,10 @@
 // The keys: notes fall onto a piano keyboard and light the keys they land on, in their hand's
 // colour. The view covers the piece's range (at least three octaves), so the keys stay large.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { pitchClass } from '../engine/notes'
+import { MAX_VELOCITY, pitchClass } from '../engine/notes'
 import { indexAt, type Timeline } from '../reader/timeline'
 import Keyboard, { keyLayout, keyRange } from './Keyboard'
+import { useReducedMotion } from './useReducedMotion'
 
 interface Props {
   timeline: Timeline | null
@@ -12,6 +13,8 @@ interface Props {
   muted: ReadonlySet<number>
   /** keys held down with the mouse */
   pressed: ReadonlySet<number>
+  lighting: number
+  performanceView: boolean
   onPress: (note: number) => void
   onRelease: (note: number) => void
 }
@@ -19,16 +22,18 @@ interface Props {
 /** score seconds shown above the keyboard */
 const WINDOW = 3.2
 
-export default function KeysView({ timeline, time, names, muted, pressed, onPress, onRelease }: Props) {
+export default function KeysView({ timeline, time, names, muted, pressed, lighting, performanceView, onPress, onRelease }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
+  const reducedMotion = useReducedMotion()
+  const ambient = reducedMotion ? 0 : lighting
   const [low, high] = keyRange(timeline?.low ?? 48, timeline?.high ?? 83)
   const keys = useMemo(() => keyLayout(low, high), [low, high])
   const byNote = useMemo(() => new Map(keys.map((k) => [k.note, k])), [keys])
   const longest = useMemo(() => timeline?.sounds.reduce((max, s) => Math.max(max, s.end - s.time), 0) ?? 0, [timeline])
   const whites = keys.filter((k) => !k.black).length
-  const keyboardHeight = Math.round(Math.max(56, Math.min(150, size.width / whites * 4.2, size.height * 0.5)))
+  const keyboardHeight = Math.round(Math.max(56, Math.min(performanceView ? 180 : 150, size.width / whites * (performanceView ? 4.8 : 4.2), size.height * 0.5)))
   const rollHeight = Math.max(0, size.height - keyboardHeight)
 
   useEffect(() => {
@@ -40,14 +45,19 @@ export default function KeysView({ timeline, time, names, muted, pressed, onPres
 
   // Which keys the score is playing now: unmuted staves only.
   const lit = new Map<number, number>()
+  const energy = new Map<number, number>()
   if (timeline) {
     const { sounds } = timeline
     for (let i = indexAt(sounds, time); i >= 0 && sounds[i].time >= time - longest - 1e-6; i--) {
       const s = sounds[i]
-      if (s.end > time + 1e-6 && !muted.has(s.staff) && !lit.has(s.midi)) lit.set(s.midi, s.staff)
+      if (muted.has(s.staff)) continue
+      if (s.end > time + 1e-6 && !lit.has(s.midi)) {
+        lit.set(s.midi, s.staff)
+        energy.set(s.midi, s.velocity / MAX_VELOCITY)
+      }
     }
   }
-  for (const note of pressed) lit.set(note, -1)
+  for (const note of pressed) { lit.set(note, -1); energy.set(note, .7) }
 
   useLayoutEffect(() => {
     const el = canvas.current
@@ -66,6 +76,23 @@ export default function KeysView({ timeline, time, names, muted, pressed, onPres
     const colours = [colour('--right'), colour('--left'), colour('--other')]
     const perSecond = h / WINDOW
     const y = (t: number) => h - (t - time) * perSecond
+
+    // The light follows actual active score notes and their authored dynamics. It has no
+    // independent animation clock, and no analyser or extra audio processing is needed.
+    if (ambient > 0) {
+      for (const [note, staff] of lit) {
+        const key = byNote.get(note)
+        if (!key) continue
+        const x = (key.x + key.width / 2) * w
+        const fill = colours[staff < 0 ? 0 : Math.min(staff, 2)]
+        const radius = Math.max(60, Math.min(w * .28, h * 1.1))
+        const bloom = ctx.createRadialGradient(x, h, 0, x, h, radius)
+        bloom.addColorStop(0, fill); bloom.addColorStop(1, 'transparent')
+        ctx.globalAlpha = ambient * (energy.get(note) ?? .5) * (performanceView ? .28 : .16)
+        ctx.fillStyle = bloom; ctx.fillRect(x - radius, h - radius, radius * 2, radius)
+      }
+      ctx.globalAlpha = 1
+    }
 
     // Darker lanes above the black keys, octave lines at every C, bar lines with their numbers.
     ctx.fillStyle = colour('--lane')
@@ -106,7 +133,7 @@ export default function KeysView({ timeline, time, names, muted, pressed, onPres
           } else {
             // Sounding notes glow; every note gets a soft sheen down its left side.
             const sounding = s.time <= time + 1e-6
-            if (sounding) { ctx.shadowColor = fill; ctx.shadowBlur = 14 }
+            if (sounding && ambient > 0) { ctx.shadowColor = fill; ctx.shadowBlur = 24 * ambient }
             ctx.fillStyle = fill
             ctx.fill()
             ctx.shadowBlur = 0
@@ -126,19 +153,31 @@ export default function KeysView({ timeline, time, names, muted, pressed, onPres
         }
       }
     }
+    // A small pool of light where each sounding note meets its key.
+    if (ambient > 0) for (const [note, staff] of lit) {
+      const key = byNote.get(note)
+      if (!key) continue
+      const x = (key.x + key.width / 2) * w
+      ctx.fillStyle = colours[staff < 0 ? 0 : Math.min(staff, 2)]
+      ctx.globalAlpha = ambient * (energy.get(note) ?? .5) * .5
+      ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 15 * ambient
+      ctx.beginPath(); ctx.ellipse(x, h - 2, key.width * w * .8, 5 + ambient * 4, 0, 0, Math.PI * 2); ctx.fill()
+    }
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1
     // The line the notes land on.
     const glow = ctx.createLinearGradient(0, h - 22, 0, h)
     glow.addColorStop(0, 'transparent')
-    glow.addColorStop(1, colour('--glow'))
+    glow.addColorStop(1, ambient > 0 ? colour('--glow') : 'transparent')
     ctx.fillStyle = glow
     ctx.fillRect(0, h - 22, w, 22)
     ctx.fillStyle = colour('--right')
     ctx.globalAlpha = 0.7
     ctx.fillRect(0, h - 1.5, w, 1.5)
     ctx.globalAlpha = 1
-  }, [time, size, rollHeight, timeline, keys, byNote, longest, names, muted])
+  }, [time, size, rollHeight, timeline, keys, byNote, longest, names, muted, pressed, ambient, performanceView])
 
-  return <div className="keys" ref={box} data-testid="keys" data-lit={[...lit.keys()].sort((a, b) => a - b).join(',')}>
+  return <div className="keys" ref={box} data-testid="keys" data-lighting={ambient} style={{ '--lighting': ambient } as React.CSSProperties}
+    data-lit={[...lit.keys()].sort((a, b) => a - b).join(',')}>
     <canvas ref={canvas} style={{ height: rollHeight }} aria-label="Falling notes" role="img" />
     {size.width > 0 && <Keyboard keys={keys} width={size.width} height={keyboardHeight} lit={lit} names={names} onPress={onPress} onRelease={onRelease} />}
   </div>

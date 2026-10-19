@@ -8,6 +8,8 @@ export interface Prefs {
   rows: number
   theme: 'paper' | 'night'
   noteNames: boolean
+  /** decorative key and stage lighting, 0–1 */
+  lighting: number
   metronome: boolean
   /** accent the first beat of each bar (metronome and count-in) */
   accent: boolean
@@ -40,7 +42,7 @@ export interface ScorePrefs {
 }
 
 export const ROW_CHOICES = [1, 2, 3, 4] as const
-const DEFAULTS: Prefs = { view: 'both', rows: 2, theme: 'paper', noteNames: false, metronome: false, accent: true, countIn: true, countInLength: 1, countInUnit: 'bars', countInLoops: false, volume: 0.8, room: 'off', speedUp: false, speedUpStep: 0.05, speedUpFrom: 0, speedUpTo: 1, split: 0.42, lastScore: '' }
+const DEFAULTS: Prefs = { view: 'both', rows: 2, theme: 'paper', noteNames: false, lighting: 0.55, metronome: false, accent: true, countIn: true, countInLength: 1, countInUnit: 'bars', countInLoops: false, volume: 0.8, room: 'off', speedUp: false, speedUpStep: 0.05, speedUpFrom: 0, speedUpTo: 1, split: 0.42, lastScore: '' }
 export const SCORE_DEFAULTS: ScorePrefs = { speed: 1, transpose: 0, volumes: {}, sections: [], position: 0, loop: null }
 
 function read<T extends object>(key: string, defaults: T): T {
@@ -53,7 +55,11 @@ function write(key: string, value: unknown) {
   try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* not stored this time */ }
 }
 
-export const loadPrefs = () => read('piano-trainer:prefs', DEFAULTS)
+export const loadPrefs = () => {
+  const prefs = read('piano-trainer:prefs', DEFAULTS)
+  prefs.lighting = typeof prefs.lighting === 'number' && Number.isFinite(prefs.lighting) ? Math.max(0, Math.min(1, prefs.lighting)) : DEFAULTS.lighting
+  return prefs
+}
 export const savePrefs = (prefs: Prefs) => write('piano-trainer:prefs', prefs)
 export function loadScorePrefs(id: string): ScorePrefs {
   const saved: ScorePrefs & { muted?: unknown } = read(`piano-trainer:score:${id}`, SCORE_DEFAULTS)
@@ -61,7 +67,7 @@ export function loadScorePrefs(id: string): ScorePrefs {
   if (Array.isArray(saved.muted)) saved.volumes = { ...Object.fromEntries(saved.muted.map((staff: number) => [staff, 0])), ...saved.volumes }
   delete saved.muted
   if (!Array.isArray(saved.sections)) saved.sections = []
-  saved.sections = saved.sections.filter((s) => s && typeof s.name === 'string' && Number.isInteger(s.first) && Number.isInteger(s.last) && s.last >= s.first)
+  saved.sections = saved.sections.filter((s) => s && typeof s.name === 'string' && Number.isInteger(s.first) && s.first >= 0 && Number.isInteger(s.last) && s.last >= s.first)
   if (typeof saved.position !== 'number' || !(saved.position >= 0)) saved.position = 0
   const loop = saved.loop
   if (!Array.isArray(loop) || !loop.every(Number.isInteger) || loop.length !== 2 || loop[1] < loop[0]) saved.loop = null
