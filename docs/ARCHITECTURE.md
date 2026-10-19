@@ -1,6 +1,6 @@
 # Architecture
 
-**Status (2026-10-14): the sheet music reader, as built (D-20–23).** The MIDI trainer's
+**Status (2026-10-19): the sheet music reader, as built (D-20–38).** The MIDI trainer's
 architecture (input, mission runner, matcher, bots) is parked in
 `parked/midi-trainer/docs/ARCHITECTURE.md`. Keep this file true: when you build or change a
 part, describe how it actually works.
@@ -27,16 +27,25 @@ Layers: `engine/` (sound, clock, note numbers) knows nothing of React or scores.
 (timeline, player, library, prefs, mscz) has no DOM, apart from IndexedDB/localStorage in
 their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and forwards clicks.
 
-## Screen layout (`App.tsx`, D-26)
+## Screen layout (`App.tsx`, D-26, D-38)
 
-- **Top bar**: the Scores drawer, the title and composer, View (Sheet · Keys · Both), Rows
-  (1–4), full screen (F) and the shortcuts list.
+- **Music desk**: an ivory workspace with a charcoal sidebar (brand, reader, Scores, current
+  piece and local-storage reminder). The score heading shows title, composer, printed bar
+  count and duration at original tempo; Import score opens the file picker directly.
+- **Top bar**: View (Sheet · Keys · Both), Rows (1–4), a paper/night sheet toggle, Focus,
+  full screen (F) and the shortcuts list. Below 900 px the sidebar gives way to a Scores
+  button here. **Focus mode** (Z, or the Focus button) hides the sidebar and score heading
+  to enlarge the music; Z or Escape restores the desk. It is not remembered and does not
+  change playback, the selected view, position or loop.
 - **Stage**: the sheet on a card, then the keys. In Both, the line between them drags to
   resize the keys (20–75 % of the stage, double-click resets to 42 %, remembered as
   `split`). Messages float over the stage; the count-in shows a large number.
-- **Dock**: the scrubber, then the position and the hands (left), the transport —
-  start, previous bar, play, next bar, loop with a repeat count, sections (centre) — and speed,
-  metronome, count-in and Settings (right).
+- **Dock**: the scrubber; then position (left), start/previous/play/next (centre) and tempo
+  (right); a separate practice row holds hands, loop with its repeat count, saved sections,
+  metronome, count-in and Settings. On compact screens the hands get their own line.
+- The scrubber is keyboard accessible: arrows seek five score seconds, Home/End seek to
+  start/end. The sheet/keys divider accepts Up/Down for five percentage-point changes
+  (20–75 %, remembered); these keys do not also change playback speed.
 - **Settings** (`ui/Settings.tsx`, a popover over the dock): speed presets, Speed up loops,
   transpose, the count-in's length (1–4 bars or 1–8 beats), Count in each loop, Accent the
   first beat, Metronome only, note names, paper or night sheet, volume, room, and each hand's volume.
@@ -68,9 +77,9 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   default "the speed now"), a loop the player makes (L, Shift+click, a section) first sets
   the speed to it; a loop restored with the score does not. Settings shows step, start and
   target under the switch while it is on.
-- The dock's three parts sit in an `auto 1fr auto` grid with the transport centred in the
-  middle, so a crowded side can never cover it; at 1200 px and below they stack. At 1360 px
-  and below the Speed label and chip icons hide and the loop label is cut shorter.
+- The transport sits in the centre of a `1fr auto 1fr` grid, with a separate row for practice
+  tools so the controls do not compete for the same space. Compact styles shorten labels
+  and wrap the practice row. Reduced-motion preferences disable decorative animation.
 - Popovers (settings, sections, go to bar) close on a press elsewhere (`ui/clickAway.ts`).
 - Icons are our own line drawings in `ui/Icons.tsx`; colours and controls are CSS variables
   and classes in `styles.css`.
@@ -167,7 +176,8 @@ For each stop:
   multi-instrument scores. Colours come from `EngravingRules` (paper or night).
 - **Rows (D-22):** render, measure the span of the first N systems, set
   `zoom = panel height / (N × pitch)`, and render again. Up to four passes, until within
-  1.5 %; zoom is limited to 0.35–2.4. Rows = 1 uses `renderSingleHorizontalStaffline`. A
+  1.5 %; zoom is limited to 0.25–2.4 (the lower floor keeps four rows fitting on the music
+  desk). Rows = 1 uses `renderSingleHorizontalStaffline`. A
   `ResizeObserver` on the sheet's frame (not the scrolling viewport, whose size changes when a
   scrollbar appears) re-fits after the panel size changes (200 ms debounce); the viewport keeps
   a stable scrollbar gutter. Watching the viewport made some panel sizes re-fit forever, which
@@ -263,6 +273,11 @@ the clicks of a 2-beat and a 2-bar count-in, and counting in each loop (no notes
 go to bar with a repeated bar, a missing bar and a loop; accented and plain clicks, and
 Metronome only (no notes sent, lit notes and keys still on, switching while playing).
 The practice tests wrap `engine.click` and `piano.noteOn` to log what is sent.
+
+`studio.spec.ts` covers focus mode preserving position and loop, direct import, library
+search/filter/sort, modal keyboard focus and native button activation, keyboard seeking
+and split persistence, and workspace bounds at 1440/1024/768/390 px. It saves visual review
+captures of the desktop, night sheet, focus, library and compact layouts under `.qa/`.
 
 Not covered: how real MuseScore downloads look and sound, and how the audio feels. Those
 need Jason.

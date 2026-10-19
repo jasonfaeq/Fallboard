@@ -319,3 +319,17 @@ runs `npm run build` and serves `dist/`. There is no `vercel.json`; there are no
 to rewrite. `.vercelignore` keeps Jason's `public/scores/` (and other local files) out of CLI
 deploys, since the CLI doesn't read `.gitignore`. *Vercel Services was considered and dropped:
 nothing calls anything, and the parked trainer can't build on its own and stays parked.*
+
+**D-38 · 2026-10-19 · A music desk with an optional focus mode** — Jason asked for a broad
+upgrade to the reader's appearance and usability. The reader now sits on a warm ivory desk
+with a charcoal sidebar, a larger score heading and a centred score library. Playback and
+practice controls occupy separate rows, keeping play centred as the window narrows. The
+library has search, source filters and sorting; Import score opens a file picker directly.
+The minimum sheet zoom is 0.25 so four rows still fit beside the new controls (D-22).
+Focus (Z) temporarily hides the sidebar and heading without changing the score, position,
+loop or playback. Paper/night is available beside the view controls. The progress bar and
+sheet/keys divider work from the keyboard, modal dialogs contain focus and restore it when
+closed, and reduced-motion preferences are respected. *The score remains the main surface;
+focus is temporary so the next visit still has an obvious way into the library. The gold
+right hand and blue left hand, audio clock, local storage and existing reader tools stay
+the same. No dependencies, remote fonts or services were added.*

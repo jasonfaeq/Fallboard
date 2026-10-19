@@ -42,7 +42,8 @@ interface Layout {
 const STAFF_HEIGHT = 4
 /** OSMD units above the first line of music (one unit is the gap between two staff lines) */
 const TOP_MARGIN = 2
-const MIN_ZOOM = 0.35
+// Four rows still need to fit when the desk heading and practice dock share the window.
+const MIN_ZOOM = 0.25
 const MAX_ZOOM = 2.4
 const INK = { paper: { music: '#17140f', lines: '#4a443b' }, night: { music: '#ece6d8', lines: '#8e88a5' } }
 

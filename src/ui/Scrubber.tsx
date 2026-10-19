@@ -19,9 +19,18 @@ export default function Scrubber({ timeline, time, loop, onSeek }: { timeline: T
   const passes = timeline && timeline.passes.length <= 600 ? timeline.passes : []
   return <div className="scrubber-row">
     <span className="clock">{clock(time)}</span>
-    <div className="scrubber" ref={bar} role="slider" aria-label="Position in the piece" tabIndex={-1}
+    <div className="scrubber" ref={bar} role="slider" aria-label="Position in the piece" tabIndex={timeline ? 0 : -1}
+      aria-disabled={!timeline}
       aria-valuemin={0} aria-valuemax={Math.round(end)} aria-valuenow={Math.round(time)} aria-valuetext={clock(time)}
-      onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); onSeek(at(e.clientX)) }}
+      onKeyDown={(e) => {
+        const next = e.key === 'Home' ? 0 : e.key === 'End' ? end :
+          e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? time - 5 :
+          e.key === 'ArrowRight' || e.key === 'ArrowUp' ? time + 5 : null
+        if (next === null || !timeline) return
+        e.preventDefault(); e.stopPropagation()
+        onSeek(Math.max(0, Math.min(end, next)))
+      }}
+      onPointerDown={(e) => { if (!timeline) return; e.currentTarget.setPointerCapture(e.pointerId); onSeek(at(e.clientX)) }}
       onPointerMove={(e) => { if (e.buttons & 1) onSeek(at(e.clientX)) }}>
       <div className="scrub-track">
         {passes.map((p, i) => i > 0 && <span key={i} className="scrub-tick" style={{ left: percent(p.time) }} />)}

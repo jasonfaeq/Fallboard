@@ -15,6 +15,7 @@ import Settings from './ui/Settings'
 import Sections from './ui/Sections'
 import GoToBar from './ui/GoToBar'
 import Icon from './ui/Icons'
+import { useDialog } from './ui/useDialog'
 
 declare global {
   interface Window {
@@ -26,7 +27,7 @@ declare global {
 const SHORTCUTS: [string, string][] = [
   ['Space', 'Play / pause'], ['Home', 'Back to the start'], ['← →', 'Previous / next bar'], ['G', 'Go to a bar number'], ['↑ ↓', 'Faster / slower'],
   ['L', 'Loop this bar (Shift+click a bar to stretch the loop)'], ['[ · ]', 'Loop the previous / next saved section'], ['M', 'Metronome'], ['Shift+M', 'Metronome only: mute the music, keep the click'], ['1 – 4', 'Rows of music'],
-  ['S · K · B', 'Sheet · Keys · Both'], ['N', 'Note names'], ['F', 'Full screen'], ['O', 'Scores'], ['?', 'This list'],
+  ['S · K · B', 'Sheet · Keys · Both'], ['N', 'Note names'], ['Z', 'Focus mode'], ['F', 'Full screen'], ['O', 'Scores'], ['?', 'This list'],
 ]
 const VIEWS: [View, string][] = [['sheet', 'Sheet'], ['keys', 'Keys'], ['both', 'Both']]
 const loopLabel = (first: number, last: number) => first === last ? `Loop bar ${first}` : `Loop bars ${first}–${last}`
@@ -55,10 +56,14 @@ export default function App() {
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [help, setHelp] = useState(false)
+  const helpPanel = useRef<HTMLDivElement>(null)
+  useDialog(helpPanel, help)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [sectionsOpen, setSectionsOpen] = useState(false)
   const [goToOpen, setGoToOpen] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const importInput = useRef<HTMLInputElement>(null)
   const [dropping, setDropping] = useState(false)
   const [pressed, setPressed] = useState<ReadonlySet<number>>(new Set())
   const anchor = useRef(0)
@@ -314,6 +319,16 @@ export default function App() {
   const keys = useRef<(e: KeyboardEvent) => void>()
   keys.current = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement
+    if (e.key === 'Escape') {
+      const panelOpen = help || libraryOpen || settingsOpen || sectionsOpen || goToOpen
+      setHelp(false); setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false); setGoToOpen(false)
+      if (!panelOpen) setFocused(false)
+      return
+    }
+    if (target?.closest('[aria-modal="true"]')) {
+      // Typing in a library or help dialog must not start playback behind it.
+      return
+    }
     // Sliders keep their arrow keys; Space and letters still work on them.
     const slider = target instanceof HTMLInputElement && target.type === 'range'
     if ((target?.tagName === 'INPUT' && !slider) || ['SELECT', 'TEXTAREA'].includes(target?.tagName) || e.ctrlKey || e.metaKey || e.altKey) return
@@ -324,8 +339,7 @@ export default function App() {
       ArrowUp: () => setSpeed(p.speed + 0.05), ArrowDown: () => setSpeed(p.speed - 0.05),
       M: () => p.setMetronomeOnly(!p.metronomeOnly), l: loopHere, '[': () => stepSection(-1), ']': () => stepSection(1), m: () => updatePrefs({ metronome: !prefs.metronome }), n: () => updatePrefs({ noteNames: !prefs.noteNames }),
       s: () => updatePrefs({ view: 'sheet' }), k: () => updatePrefs({ view: 'keys' }), b: () => updatePrefs({ view: 'both' }),
-      g: () => { if (timeline) setGoToOpen(true) }, f: toggleFullscreen, o: () => setLibraryOpen((v) => !v), '?': () => setHelp((v) => !v),
-      Escape: () => { setHelp(false); setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false); setGoToOpen(false) },
+      g: () => { if (timeline) setGoToOpen(true) }, f: toggleFullscreen, z: () => setFocused((v) => !v), o: () => setLibraryOpen((v) => !v), '?': () => setHelp((v) => !v),
       '1': () => updatePrefs({ rows: 1 }), '2': () => updatePrefs({ rows: 2 }), '3': () => updatePrefs({ rows: 3 }), '4': () => updatePrefs({ rows: 4 }),
     }
     const action = actions[key === 'M' && e.shiftKey ? 'M' : key.length === 1 ? key.toLowerCase() : key]
@@ -336,7 +350,10 @@ export default function App() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => keys.current!(e)
     // Space is play/pause everywhere: it must not also press the button that has focus.
-    const up = (e: KeyboardEvent) => { if (e.key === ' ' && (e.target as HTMLElement)?.tagName === 'BUTTON') e.preventDefault() }
+    const up = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (e.key === ' ' && target?.tagName === 'BUTTON' && !target.closest('[aria-modal="true"]')) e.preventDefault()
+    }
     window.addEventListener('keydown', handler)
     window.addEventListener('keyup', up)
     return () => { window.removeEventListener('keydown', handler); window.removeEventListener('keyup', up) }
@@ -352,24 +369,52 @@ export default function App() {
   const muted = p.muted
   const speed = Math.round(p.speed * 100)
 
-  return <div className="app"
+  return <div className={`app${focused ? ' is-focused' : ''}`}
     onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDropping(true) } }}
     onDragLeave={(e) => { if (e.currentTarget === e.target) setDropping(false) }}
     onDrop={(e) => { e.preventDefault(); setDropping(false); void importFiles(e.dataTransfer.files) }}>
-    <header className="topbar">
-      <div className="brand" aria-hidden="true">
-        <svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" /><path d="M7 9h18v14H7z" /><path d="M11.5 9h3v8h-3zM18 9h3v8h-3z" /></svg>
+    <aside className="sidebar" aria-label="Workspace">
+      <div className="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" /><path d="M7 9h18v14H7z" /><path d="M11.5 9h3v8h-3zM18 9h3v8h-3z" /></svg>
+        <span>fallboard<span>A little closer to the music.</span></span>
       </div>
-      <button className="scores-button" onClick={() => setLibraryOpen(true)} title="Scores (O)">
-        <Icon name="scores" /> Scores
+      <div className="sidebar-label">WORKSPACE</div>
+      <div className="nav-item active"><Icon name="sheet" /> Score reader <span className="nav-dot" /></div>
+      <button className="nav-item" aria-label="Scores" onClick={() => setLibraryOpen(true)} title="Scores (O)">
+        <Icon name="scores" /> My scores <span className="nav-count">{BUILT_IN.length + imported.length}</span>
       </button>
-      <div className="score-title">
-        <h1>{entry?.title ?? 'Fallboard'}</h1>
-        <p>{entry?.composer || (entry?.file ?? '')}</p>
+      <div className="sidebar-piece">
+        <div className="sidebar-label">ON THE MUSIC DESK</div>
+        <div className="score-art" aria-hidden="true"><span>ƒ</span><i /><i /><i /><i /><i /></div>
+        <strong>{entry?.title ?? 'Your next piece'}</strong>
+        <span>{entry?.builtIn ? 'From the Fallboard collection' : 'From your score library'}</span>
+        <button onClick={() => setLibraryOpen(true)}>Change score <Icon name="next" size={14} /></button>
       </div>
-      <div className="segmented" role="group" aria-label="View">
+      <div className="desk-note"><span className="sidebar-label">MAKE IT YOUR OWN</span>
+        <p>A few bars. A slower tempo.<br />As many times as you like.</p>
+        <span><kbd>Space</kbd> to play <span>·</span> <kbd>L</kbd> to loop</span>
+      </div>
+      <div className="local-status"><Icon name="check" size={15} /><div>Your music stays yours.<span>Scores saved in this browser</span></div></div>
+    </aside>
+
+    <div className="workspace">
+    <header className="score-heading">
+      <div className="score-title">
+        <p className="eyebrow">THE MUSIC DESK</p>
+        <h1>{entry?.title ?? 'Fallboard'}</h1>
+        <p className="score-subtitle"><span>{entry?.composer || entry?.file || 'Open a score. Find your flow.'}</span>
+          {timeline && <span className="score-meta">{lastBar} bars <span>·</span> {clock(timeline.end)} at original tempo</span>}</p>
+      </div>
+      <button className="import-button" onClick={() => importInput.current?.click()}><Icon name="upload" size={17} /> Import score</button>
+    </header>
+    <input ref={importInput} type="file" hidden data-testid="quick-import-input" accept=".mxl,.musicxml,.xml,.mscz,.mscx"
+      onChange={(e) => { if (e.target.files?.length) void importFiles(e.target.files); e.target.value = '' }} />
+
+    <div className="topbar">
+      <button className="icon-button mobile-scores" aria-label="Scores" onClick={() => setLibraryOpen(true)} title="Scores (O)"><Icon name="scores" /></button>
+      <div className="segmented view-picker" role="group" aria-label="View">
         {VIEWS.map(([value, label]) => <button key={value} className={prefs.view === value ? 'on' : ''} aria-pressed={prefs.view === value}
-          title={`${label} (${label[0]})`} onClick={() => updatePrefs({ view: value })}>{label}</button>)}
+          title={`${label} (${label[0]})`} onClick={() => updatePrefs({ view: value })}><Icon name={value === 'sheet' ? 'sheet' : value === 'keys' ? 'keyboard' : 'both'} size={16} />{label}</button>)}
       </div>
       <div className="segmented rows" role="group" aria-label="Rows" title="Rows of music (1–4)">
         <span className="label">Rows</span>
@@ -377,11 +422,15 @@ export default function App() {
           aria-label={`${n} row${n > 1 ? 's' : ''}`} onClick={() => updatePrefs({ rows: n })}>{n}</button>)}
       </div>
       <div className="topbar-end">
+        <button className="icon-button paper-toggle" onClick={() => updatePrefs({ theme: prefs.theme === 'paper' ? 'night' : 'paper' })}
+          aria-label="Night sheet" aria-pressed={prefs.theme === 'night'} title="Switch paper / night sheet"><Icon name={prefs.theme === 'paper' ? 'moon' : 'sun'} /></button>
+        <button className={`focus-button${focused ? ' on' : ''}`} onClick={() => setFocused((v) => !v)} aria-label="Focus mode" aria-pressed={focused} title="Focus mode (Z)">
+          <Icon name="focus" size={16} /><span>{focused ? 'Leave focus' : 'Focus'}</span></button>
         <button className="icon-button" onClick={toggleFullscreen} aria-label={fullscreen ? 'Leave full screen' : 'Full screen'} title="Full screen (F)">
           <Icon name={fullscreen ? 'shrink' : 'expand'} /></button>
         <button className="icon-button help-button" onClick={() => setHelp(true)} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">?</button>
       </div>
-    </header>
+    </div>
 
     <main ref={stage} className={`stage view-${prefs.view}`} style={{ '--keys': `${prefs.split * 100}%` } as React.CSSProperties}>
       <section className="sheet-pane" aria-label="Sheet music" hidden={prefs.view === 'keys'}>
@@ -390,9 +439,15 @@ export default function App() {
           onLoaded={onLoaded} onError={(text) => setMessage({ text, error: true })} onPick={onPick} />
       </section>
       {prefs.view === 'both' && <div className="divider" role="separator" aria-orientation="horizontal" aria-label="Drag to resize the keys"
-        title="Drag to resize · double-click to reset"
+        title="Drag to resize · arrow keys to adjust · double-click to reset" tabIndex={0}
+        aria-valuemin={20} aria-valuemax={75} aria-valuenow={Math.round(prefs.split * 100)}
+        onKeyDown={(e) => {
+          if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+          e.preventDefault(); e.stopPropagation()
+          updatePrefs({ split: Math.max(0.2, Math.min(0.75, prefs.split + (e.key === 'ArrowUp' ? 0.05 : -0.05))) })
+        }}
         onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)} onPointerMove={dragSplit}
-        onDoubleClick={() => updatePrefs({ split: 0.42 })}><span /></div>}
+        onDoubleClick={() => updatePrefs({ split: 0.42 })}><span /><small>KEYS</small><span /></div>}
       {prefs.view !== 'sheet' && <section className="keys-pane" aria-label="Keys">
         <KeysView timeline={timeline} time={time} names={prefs.noteNames} muted={muted} pressed={pressed} onPress={(n) => void press(n)} onRelease={release} />
       </section>}
@@ -416,14 +471,6 @@ export default function App() {
             </button>
             {goToOpen && timeline && <GoToBar first={firstBar} last={lastBar} onGo={goToBar} onClose={closeGoTo} />}
           </div>
-          {timeline && timeline.staves.length > 1 && <div className="hands" role="group" aria-label="Staves to hear">
-            {timeline.staves.map((s) => {
-              const volume = Math.round(p.volumeOf(s.index) * 100)
-              return <button key={s.index} className={`hand staff-${Math.min(s.index, 2)}${muted.has(s.index) ? ' muted' : ' on'}`}
-                aria-pressed={!muted.has(s.index)} title={muted.has(s.index) ? 'Muted: click to hear it' : 'Click to mute (the volume is in Settings)'}
-                onClick={() => toggleMute(s.index)}><i aria-hidden="true" />{s.name}{volume > 0 && volume < 100 && <small aria-hidden="true">{volume}%</small>}</button>
-            })}
-          </div>}
         </div>
 
         <div className="transport">
@@ -433,6 +480,25 @@ export default function App() {
             <Icon name={p.playing ? 'pause' : 'play'} size={26} />
           </button>
           <button className="icon-button" onClick={() => stepBar(1)} disabled={!timeline} title="Next bar (→)" aria-label="Next bar"><Icon name="next" /></button>
+        </div>
+
+        <label className="speed" title="Speed (↑ ↓)">
+          <span className="label">Tempo</span>
+          <input type="range" min={25} max={200} step={5} value={speed} aria-label="Speed"
+            style={{ '--fill': `${((speed - 25) / 175) * 100}%` } as React.CSSProperties}
+            onChange={(e) => setSpeed(Number(e.target.value) / 100)} />
+          <output className={speed !== 100 ? 'changed' : ''}>{speed}%</output>
+        </label>
+      </div>
+      <div className="practice-row">
+          {timeline && timeline.staves.length > 1 && <div className="hands" role="group" aria-label="Staves to hear">
+            {timeline.staves.map((s) => {
+              const volume = Math.round(p.volumeOf(s.index) * 100)
+              return <button key={s.index} className={`hand staff-${Math.min(s.index, 2)}${muted.has(s.index) ? ' muted' : ' on'}`}
+                aria-pressed={!muted.has(s.index)} title={muted.has(s.index) ? 'Muted: click to hear it' : 'Click to mute (the volume is in Settings)'}
+                onClick={() => toggleMute(s.index)}><i aria-hidden="true" />{s.name}{volume > 0 && volume < 100 && <small aria-hidden="true">{volume}%</small>}</button>
+            })}
+          </div>}
           <button className={`loop-button${loop ? ' on' : ''}`} aria-pressed={!!loop} onClick={loopHere} title="Loop this bar (L). Shift+click another bar to stretch the loop.">
             <Icon name="loop" />
             <span>{activeSection >= 0 ? sections[activeSection].name : loop && timeline ? loopLabel(timeline.passes[loop[0]].number, timeline.passes[loop[1]].number) : 'Loop'}</span>
@@ -447,16 +513,6 @@ export default function App() {
               onRename={(i, name) => updateScorePrefs({ sections: sections.map((s, j) => j === i ? { ...s, name } : s) })}
               onDelete={(i) => updateScorePrefs({ sections: sections.filter((_, j) => j !== i) })} />}
           </div>
-        </div>
-
-        <div className="dock-end">
-          <label className="speed" title="Speed (↑ ↓)">
-            <span className="label">Speed</span>
-            <input type="range" min={25} max={200} step={5} value={speed} aria-label="Speed"
-              style={{ '--fill': `${((speed - 25) / 175) * 100}%` } as React.CSSProperties}
-              onChange={(e) => setSpeed(Number(e.target.value) / 100)} />
-            <output className={speed !== 100 ? 'changed' : ''}>{speed}%</output>
-          </label>
           {p.metronomeOnly
             ? <button className="chip on solo" aria-pressed="true" onClick={() => p.setMetronomeOnly(false)} title="The music is muted (Shift+M). Click to hear it again.">
               <Icon name="metronome" size={16} />Metronome only</button>
@@ -473,9 +529,9 @@ export default function App() {
               onVolume={(v) => { engine.current!.volume = v; updatePrefs({ volume: v }) }}
               onRoom={(room) => { engine.current!.room = room; updatePrefs({ room }) }} />}
           </div>
-        </div>
       </div>
     </footer>
+    </div>
 
     {libraryOpen && <Library current={entry?.id ?? ''} builtIn={BUILT_IN} imported={imported} onOpen={(e) => void open(e)}
       onImport={(files) => void importFiles(files)} onClose={() => setLibraryOpen(false)}
@@ -485,7 +541,7 @@ export default function App() {
       })} />}
 
     {help && <div className="backdrop center" onClick={() => setHelp(false)}>
-      <div className="help" role="dialog" aria-label="Keyboard shortcuts" onClick={(e) => e.stopPropagation()}>
+      <div className="help" ref={helpPanel} role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" onClick={(e) => e.stopPropagation()}>
         <header><h2>Keyboard shortcuts</h2><button className="icon-button" aria-label="Close shortcuts" onClick={() => setHelp(false)}><Icon name="close" /></button></header>
         <dl>{SHORTCUTS.map(([k, v]) => <div key={k}><dt>{k.split(' · ').map((part) => <kbd key={part}>{part}</kbd>)}</dt><dd>{v}</dd></div>)}</dl>
         <p className="hint">Click a note in the music to jump there. Click the keys to hear them. Drag the line above the keys to resize them.

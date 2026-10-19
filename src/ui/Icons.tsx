@@ -17,6 +17,12 @@ const PATHS = {
   sections: 'M7 3.5h10v17l-5-4-5 4z',
   edit: 'M4.5 19.5h4l10-10-4-4-10 10zM13 7l4 4',
   keyboard: 'M3.5 5.5h17v13h-17zM8 5.5v8M12 5.5v8M16 5.5v8M6.5 13.5h3M10.5 13.5h3M14.5 13.5h3',
+  sheet: 'M6 3.5h9l3 3v14H6zM14.5 3.5v4h3M9 11h6M9 14h6M9 17h4',
+  both: 'M3.5 4.5h17v15h-17zM3.5 13.5h17M8 13.5v6M12 13.5v6M16 13.5v6M7 8h10',
+  focus: 'M8 3.5H3.5V8M16 3.5h4.5V8M3.5 16v4.5H8M20.5 16v4.5H16M9 12h6M12 9v6',
+  check: 'm5 12 4.5 4.5L19 7',
+  sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5',
+  moon: 'M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z',
 } as const
 
 export type IconName = keyof typeof PATHS | 'play' | 'pause'

@@ -68,6 +68,11 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
       (D-36). Subdivisions and other click sounds are not built. *Needs Jason: is the
       accent loud enough against the piano, and do the new controls feel right at the piano?*
 
+- [x] **Music desk upgrade**: warm desk/sidebar layout, separate transport and practice
+      rows, direct import, focus mode (Z), quick night sheet, library source filters and
+      sorting, modal keyboard focus, keyboard seeking and split resizing — 2026-10-19
+      (D-38). *Needs Jason: judge the new workspace at the piano and confirm playback by ear.*
+
 ## Later
 
 - [ ] Bring back the MIDI trainer on top of the reader (parked roadmap, Phase 1 onwards).
