@@ -1,6 +1,6 @@
 # Architecture
 
-**Status (2026-10-19): the sheet music reader, as built (D-20–41).** The MIDI trainer's
+**Status (2026-10-19): the sheet music reader, as built (D-20–42).** The MIDI trainer's
 architecture (input, mission runner, matcher, bots) is parked in
 `parked/midi-trainer/docs/ARCHITECTURE.md`. Keep this file true: when you build or change a
 part, describe how it actually works.
@@ -86,6 +86,11 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   per played bar from overlapping written note lengths, using exact pitch-class sets for
   common triads/sevenths. Nonmatches and multiple matches stay blank. Labels are estimates,
   not imported harmony; transposition is already in the timeline.
+- **My sessions** (`ui/Sessions.tsx`, D-42): current playback time and the latest 50 local
+  recaps, with passage visits, start/end/range of speed and speed-change count. Finish
+  session saves the current interval; natural completion, switching and pagehide save too.
+  Completion offers a small View recap notice, respecting reduced motion. This records
+  reader activity, without scoring the player.
 - The scrubber is keyboard accessible: arrows seek five score seconds, Home/End seek to
   start/end. The sheet/keys divider accepts Up/Down for five percentage-point changes
   (20–75 %, remembered); these keys do not also change playback speed.
@@ -149,6 +154,11 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   the existing 0.6 score-second ringing tail, natural completion invokes `onEnded`, which
   drives setlist advancement and recaps. Pause/seek/stop never invoke it; pause also
   cancels a pending audio-start request.
+- **Session time** (`reader/sessions.ts`): the pure tracker receives samples carrying
+  `AudioContext.currentTime`, state, position, speed and passage. It integrates only the
+  interval following an active main-player sample, capped at the remaining score time.
+  Count-ins, pauses, previews, seeks and the ringing tail add no duration. Passage entries,
+  resume and loop revisits count as visits. `Date.now()` supplies history labels only.
 - **Count-in** (D-34): `countInLength` bars (the bar's counted beats each) or beats at the
   beat length where playback starts; a click a whole number of bars before the start is
   accented. The transport starts that many beats early and the state is `countIn` until it
@@ -293,7 +303,8 @@ separately. The page pauses playback when it is hidden.
   `{ measure, text, bookmarked }` source-measure entries). Score settings are
   written at once, not in a React state updater, so the page closing still keeps them.
 - `reader/prefs.ts` also owns `fallboard:collection` (favourite score IDs and named ordered
-  setlists, sanitised by the pure `reader/collection.ts`). Imported-score deletion removes its collection references.
+  setlists, sanitised by the pure `reader/collection.ts`) and `fallboard:sessions` (the
+  latest 50 validated recaps). Imported-score deletion removes its collection references.
   No server state or remote service is involved.
 - **Where you were**: the app saves the position whenever the player changes while not
   playing (pause, seek, stop, the end), before another score opens, and on `pagehide`
@@ -348,6 +359,15 @@ idle/revealed controls while the audio player keeps advancing, repeated-bar pass
 dragged and keyboard loop boundaries, named passage persistence, pointer key travel and
 voice release, lighting rendering/persistence/reduced motion, and desktop/compact bounds.
 It saves stage and passage-map captures under `.qa/`.
+
+`reader-ideas.spec.ts` exercises favourites and setlist editing/persistence/next/end,
+automatic advancement after completion, preview cancellation and main-score preservation,
+closing an idle library during playback, notes/bookmarks across repeats/resize/transpose/
+reload/removal, chord estimates and unknown bars, beat and pedal state, audio-clock session
+accounting and persisted history. The original four-bar `context-study.musicxml` fixture
+has C, Am, G7 and a resting bar, with pedal marks at a fixed tempo. A pure tracker test
+injects count-in/pause/seek/loop/tempo samples. Captures show desktop/compact collection,
+notes and context, plus saved session history under `.qa/`.
 
 Not covered: how real MuseScore downloads look and sound, and how the audio feels. Those
 need Jason.

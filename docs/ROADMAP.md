@@ -91,6 +91,12 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
 - [x] **Musical context**: optional beat pulse, pedal state from score marks and conservative
       chord estimates (C), including transposition — 2026-10-19 (D-41). Estimates use the
       notes in a played bar; ambiguous sets are left blank and source harmony is not read.
+- [x] **Session recaps**: local history of the latest 50 listens, actual playback time,
+      passage visits and tempo changes, plus quiet completion feedback — 2026-10-19 (D-42).
+      Count-ins, pauses, previews and seek distance are excluded. This records reader
+      activity; it does not score playing. *Needs Jason: listen to previews and setlist
+      transitions, and judge annotations, context and recaps at the piano.*
+
 ## Later
 
 - [ ] Bring back the MIDI trainer on top of the reader (parked roadmap, Phase 1 onwards).

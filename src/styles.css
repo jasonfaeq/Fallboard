@@ -609,6 +609,8 @@ button.position { align-items: flex-start; padding: 4px 8px; margin-left: -8px; 
 .queue-strip { display: flex; align-items: center; gap: 4px; padding: 4px 0 3px; border-bottom: 1px solid var(--line); font-size: 11px; color: #c8d4ba; }
 .queue-strip > span { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .queue-strip .icon-button { width: 26px; height: 26px; }
+.mobile-sessions { display: none; }
+.is-focused .mobile-sessions, .is-performance .mobile-sessions { display: inline-grid; }
 
 /* Notes belong to the printed measure, including every repeated pass. */
 .notes-dialog { width: min(620px, 94vw); }
@@ -651,10 +653,39 @@ button.position { align-items: flex-start; padding: 4px 8px; margin-left: -8px; 
 .is-performance .pedal-context { color: #a0b38f; }
 .is-performance .beat-dots i { background: #4a6240; }
 .is-performance .beat-dots i.active { background: #e1c27c; }
+
+/* Session history describes listening activity, with no performance judgement. */
+.sessions-dialog { width: min(700px, 94vw); }
+.current-session { display: flex; justify-content: space-between; align-items: center; gap: 16px; background: #2c392b; border: 1px solid #536647; padding: 14px; border-radius: 10px; margin: 18px 0 12px; }
+.current-session > div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.current-session .panel-label { margin: 0; }
+.current-session strong { font: 400 20px var(--serif); }
+.current-session > div > span:last-child { font-size: 12px; color: #bdcbb0; }
+.current-session button { flex: none; font-size: 12px; }
+.session-list { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 12px; }
+.session-list > li { padding: 16px; border: 1px solid var(--line-strong); border-radius: 10px; background: #27302a; }
+.session-list > li.completed { border-color: #6e7650; }
+.session-heading { display: flex; align-items: center; gap: 10px; }
+.session-heading > .ico { color: #bbca9f; }
+.session-heading > div { flex: 1; min-width: 0; }
+.session-heading h3 { margin: 0; font: 400 20px/1.3 var(--serif); }
+.session-heading p { color: var(--faint); font-size: 11px; margin: 5px 0 0; }
+.session-heading > strong { font-size: 13px; color: #dac58c; font-weight: 500; white-space: nowrap; }
+.session-tempo { display: flex; flex-wrap: wrap; gap: 6px 16px; border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; color: var(--dim); font-size: 11px; }
+.session-passages { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.session-passages > span { display: inline-flex; align-items: center; gap: 8px; color: #c0cdb0; background: #ffffff06; padding: 4px 8px; border: 1px solid #98aa772e; border-radius: 5px; font-size: 11px; }
+.session-passages small { color: #d9c58b; }
+.session-toast { position: fixed; z-index: 8; left: 50%; bottom: 190px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; width: min(600px, calc(100% - 24px)); padding: 16px; border: 1px solid #9c985d; border-radius: 12px; background: #2b3b26; color: #eee6c7; box-shadow: var(--shadow); animation: session-arrive .45s ease-out; }
+.session-toast > div { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.session-toast strong { font: 400 20px var(--serif); }
+.session-toast span { font-size: 11px; color: #c0cfb0; }
+.session-toast > button:not(.icon-button) { font-size: 11px; background: #45533a; border-color: #77805a; }
+@keyframes session-arrive { from { opacity: 0; translate: 0 8px; } }
 @media (max-width: 1100px) {
   .topbar { flex-wrap: wrap; gap: 10px; }
   .topbar-end { flex-basis: 100%; justify-content: flex-end; gap: 1px; }
 }
+@media (max-width: 900px) { .mobile-sessions { display: inline-grid; } }
 @media (max-width: 650px) {
   .topbar, .is-performance .topbar { flex-wrap: wrap; }
   .topbar-end { flex-basis: 100%; justify-content: flex-end; }
@@ -671,4 +702,10 @@ button.position { align-items: flex-start; padding: 4px 8px; margin-left: -8px; 
   .musical-context { gap: 8px 14px; padding: 8px 10px; }
   .chord-context { gap: 7px; padding-left: 12px; }
   .pedal-context { flex-basis: 100%; margin-left: 0; }
+  .current-session { flex-direction: column; align-items: flex-start; }
+  .session-heading { flex-wrap: wrap; }
+  .session-heading > strong { padding-left: 28px; }
+  .session-toast { bottom: 190px; gap: 8px; flex-wrap: wrap; }
+  .session-toast strong { font-size: 18px; }
+  .session-toast > .ico { display: none; }
 }

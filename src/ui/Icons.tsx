@@ -28,6 +28,7 @@ const PATHS = {
   up: 'm6 15 6-6 6 6',
   down: 'm6 9 6 6 6-6',
   notes: 'M5 3.5h14v17H5zM8 8h8M8 12h8M8 16h4',
+  history: 'M4 5v5h5M4.5 9a8 8 0 1 1 .8 7M12 7v5l3 2',
   pedal: 'M4 17h16v3H4zM8 17l3-12h4l-1 12M11 5h4',
   context: 'M4 7h16M4 12h16M4 17h16M8 4v14a2 2 0 1 1-1.5-1.9M16 4v10a2 2 0 1 1-1.5-1.9',
   setlist: 'M4 5h12M4 10h12M4 15h6M17 13v7M13.5 16.5h7',

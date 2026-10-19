@@ -2,6 +2,7 @@
 // each staff's volume, its saved sections, and where you were in it (position and loop). Storage can be unavailable (private windows); everything still works without it.
 import type { Room } from '../engine/audio'
 import { cleanCollection, EMPTY_COLLECTION, type Collection } from './collection'
+import { validRecap, type SessionRecap } from './sessions'
 
 export type View = 'sheet' | 'keys' | 'both'
 export interface Prefs {
@@ -83,3 +84,8 @@ export function loadScorePrefs(id: string): ScorePrefs {
 export const saveScorePrefs = (id: string, prefs: ScorePrefs) => write(`piano-trainer:score:${id}`, prefs)
 export const loadCollection = () => cleanCollection(read('fallboard:collection', EMPTY_COLLECTION))
 export const saveCollection = (collection: Collection) => write('fallboard:collection', collection)
+export const loadSessions = () => {
+  const value = read<{ history: SessionRecap[] }>('fallboard:sessions', { history: [] })
+  return Array.isArray(value.history) ? value.history.filter(validRecap).slice(0, 50) : []
+}
+export const saveSessions = (history: SessionRecap[]) => write('fallboard:sessions', { history: history.slice(0, 50) })

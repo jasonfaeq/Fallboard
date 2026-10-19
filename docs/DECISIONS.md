@@ -376,3 +376,14 @@ written note lengths overlapping a played bar: exact major/minor/diminished tria
 common seventh sets only, with slash bass; unmatched or ambiguous sets stay blank.
 *This small recogniser is not harmonic analysis, and does not preserve source chord
 symbols lost during MuseScore conversion. Everything follows the transposed timeline.*
+
+**D-42 · 2026-10-19 · Recaps measure listening activity on the audio clock** — My sessions
+shows the current listen and the latest 50 saved sessions in this browser. A pure
+SessionTracker receives audio-clock samples from the main player and counts actual
+playing time, passage entries/revisits and speed-setting changes. Count-ins, pauses,
+previews, seeks and the ending ringing tail add no listening time. A recap is saved on
+natural completion, switching scores, closing/reloading the page, or Finish session;
+intervals shorter than a quarter second are discarded. Completion offers a restrained
+View recap notice. Dates only label the history; they never decide note timing or
+listening duration. *These are reader activity records, with no grades or claims about
+what Jason played, heard, or learned.*

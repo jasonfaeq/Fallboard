@@ -6,8 +6,10 @@ import { Player } from './reader/player'
 import { buildTimeline, passAt, type Timeline } from './reader/timeline'
 import { isMuseScoreFile, museScoreToMusicXml } from './reader/mscz'
 import { BUILT_IN, checkFile, deleteImported, importFile, listImported, loadImported, renameImported, sourceFrom, type ScoreEntry, type ScoreSource } from './reader/library'
-import { ROW_CHOICES, SCORE_DEFAULTS, loadCollection, loadPrefs, loadScorePrefs, saveCollection, savePrefs, saveScorePrefs, type Prefs, type ScoreAnnotation, type ScorePrefs, type Section, type View } from './reader/prefs'
+import { ROW_CHOICES, SCORE_DEFAULTS, loadCollection, loadPrefs, loadScorePrefs, loadSessions, saveCollection, savePrefs, saveScorePrefs, saveSessions, type Prefs, type ScoreAnnotation, type ScorePrefs, type Section, type View } from './reader/prefs'
 import type { Collection, Setlist } from './reader/collection'
+import { SessionTracker, type SessionEnd, type SessionRecap } from './reader/sessions'
+import { buildPassages, passageLabel } from './reader/passages'
 import SheetView from './ui/SheetView'
 import KeysView from './ui/KeysView'
 import Library from './ui/Library'
@@ -22,6 +24,7 @@ import { useReducedMotion } from './ui/useReducedMotion'
 import { useScorePreview } from './ui/useScorePreview'
 import ScoreNotes from './ui/ScoreNotes'
 import MusicalContext from './ui/MusicalContext'
+import Sessions, { listeningTime } from './ui/Sessions'
 
 declare global {
   interface Window {
@@ -68,6 +71,11 @@ export default function App() {
   const autoPlayScore = useRef<string | null>(null)
   const openRequest = useRef(0)
   const [notesMeasure, setNotesMeasure] = useState<number | null>(null)
+  const [sessionsOpen, setSessionsOpen] = useState(false)
+  const [history, setHistory] = useState(loadSessions)
+  const historyRef = useRef(history)
+  const [recapToast, setRecapToast] = useState<SessionRecap | null>(null)
+  const tracker = useRef(new SessionTracker())
   const preview = useScorePreview(engine.current, p, libraryOpen)
   const [help, setHelp] = useState(false)
   const helpPanel = useRef<HTMLDivElement>(null)
@@ -87,6 +95,30 @@ export default function App() {
   const anchor = useRef(0)
   const latest = useRef({ entry, scorePrefs, timeline, prefs, loop })
   latest.current = { entry, scorePrefs, timeline, prefs, loop }
+  const passageCache = useRef<{ timeline: Timeline; passages: ReturnType<typeof buildPassages> } | null>(null)
+  const sampleSession = useRef(() => {})
+  sampleSession.current = () => {
+    const t = latest.current.timeline, score = latest.current.entry, audio = engine.current!.context
+    if (!t || !score || !audio) return
+    if (passageCache.current?.timeline !== t) passageCache.current = { timeline: t, passages: buildPassages(t) }
+    const at = p.time, pass = passAt(t, at)
+    const passage = passageCache.current.passages.find((part) => pass >= part.first && pass <= part.last)
+    if (!passage) return
+    tracker.current.sample({ score: score.id, title: score.title, composer: score.composer, date: Date.now(), audioTime: audio.currentTime,
+      active: p.state === 'playing' && at < t.end, position: at, end: t.end, speed: p.speed, repeats: p.repeats,
+      passage: { first: passage.first, label: passageLabel(t, passage) } })
+  }
+  const finishSession = useRef<(reason: SessionEnd, notify?: boolean) => SessionRecap | null>(() => null)
+  finishSession.current = (reason, notify = false) => {
+    sampleSession.current()
+    const recap = tracker.current.finish(crypto.randomUUID(), Date.now(), reason)
+    if (recap) {
+      const next = [recap, ...historyRef.current].slice(0, 50)
+      historyRef.current = next; saveSessions(next); setHistory(next)
+      if (notify) setRecapToast(recap)
+    }
+    return recap
+  }
   const updateCollection = (next: Collection) => { saveCollection(next); setCollection(next) }
 
   const updatePrefs = (patch: Partial<Prefs>) => setPrefs((old) => { const next = { ...old, ...patch }; savePrefs(next); return next })
@@ -111,6 +143,7 @@ export default function App() {
 
   const openSource = useCallback((next: ScoreEntry, data: ScoreSource, closeLibrary = true, autoPlay = false) => {
     openRequest.current++
+    finishSession.current('switched')
     preview.stop()
     rememberPosition.current()
     p.load(null)
@@ -123,6 +156,7 @@ export default function App() {
     setTimeline(null)
     setLoopPasses(null)
     setNotesMeasure(null)
+    setRecapToast(null)
     autoPlayScore.current = autoPlay ? next.id : null
     setSource({ key: `${next.id}:${Date.now()}`, data })
     if (closeLibrary) setLibraryOpen(false)
@@ -225,6 +259,7 @@ export default function App() {
   }
   p.onEnded = () => {
     const current = queueRef.current, next = current && current.index + 1 < current.scores.length
+    finishSession.current('completed', !next)
     if (next) moveQueue(1)
     else { queueRef.current = null; setQueue(null) }
   }
@@ -322,7 +357,7 @@ export default function App() {
   // This timer only fades UI chrome. Music continues to use the audio clock.
   useEffect(() => {
     setControlsHidden(false)
-    if (!performanceView || !p.playing || reducedMotion || libraryOpen || help || settingsOpen || sectionsOpen || goToOpen || passagesOpen || notesMeasure !== null) return
+    if (!performanceView || !p.playing || reducedMotion || libraryOpen || help || settingsOpen || sectionsOpen || goToOpen || passagesOpen || notesMeasure !== null || sessionsOpen) return
     let timer: ReturnType<typeof setTimeout>
     const reveal = () => {
       setControlsHidden(false)
@@ -341,7 +376,7 @@ export default function App() {
       window.removeEventListener('keydown', reveal)
       window.removeEventListener('focusin', reveal)
     }
-  }, [performanceView, p.playing, reducedMotion, libraryOpen, help, settingsOpen, sectionsOpen, goToOpen, passagesOpen, notesMeasure])
+  }, [performanceView, p.playing, reducedMotion, libraryOpen, help, settingsOpen, sectionsOpen, goToOpen, passagesOpen, notesMeasure, sessionsOpen])
 
   // Drag the line between the sheet and the keys.
   const stage = useRef<HTMLElement>(null)
@@ -378,20 +413,23 @@ export default function App() {
 
   // Redraw every frame while playing; otherwise only when something changes.
   useEffect(() => {
-    p.onChange = () => { redraw(); if (!p.playing) rememberPosition.current() }
+    p.onChange = () => { sampleSession.current(); redraw(); if (!p.playing) rememberPosition.current() }
     engine.current!.onChange = redraw
     engine.current!.volume = latest.current.prefs.volume
     engine.current!.room = latest.current.prefs.room
     let frame = 0
-    const tick = () => { if (p.playing) redraw(); frame = requestAnimationFrame(tick) }
+    const tick = () => {
+      if (p.playing) { sampleSession.current(); redraw() }
+      frame = requestAnimationFrame(tick)
+    }
     frame = requestAnimationFrame(tick)
     const hidden = () => { if (document.hidden) p.pause() }
-    const leaving = () => rememberPosition.current()
+    const leaving = () => { rememberPosition.current(); finishSession.current('closed') }
     document.addEventListener('visibilitychange', hidden)
     window.addEventListener('pagehide', leaving)
     return () => { cancelAnimationFrame(frame); document.removeEventListener('visibilitychange', hidden); window.removeEventListener('pagehide', leaving) }
   }, [p])
-  useEffect(() => () => { p.dispose(); engine.current!.dispose() }, [p])
+  useEffect(() => () => { finishSession.current('closed'); p.dispose(); engine.current!.dispose() }, [p])
   useEffect(() => {
     p.metronome = prefs.metronome
     p.accent = prefs.accent
@@ -410,10 +448,10 @@ export default function App() {
   keys.current = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement
     if (e.key === 'Escape') {
-      const panelOpen = help || libraryOpen || settingsOpen || sectionsOpen || goToOpen || notesMeasure !== null
+      const panelOpen = help || libraryOpen || settingsOpen || sectionsOpen || goToOpen || notesMeasure !== null || sessionsOpen
       if (libraryOpen) preview.stop()
       setHelp(false); setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false); setGoToOpen(false)
-      setNotesMeasure(null)
+      setNotesMeasure(null); setSessionsOpen(false)
       if (!panelOpen) {
         if (passagesOpen) setPassagesOpen(false)
         else { setFocused(false); setPerformanceView(false) }
@@ -481,6 +519,7 @@ export default function App() {
       <button className="nav-item" aria-label="Scores" onClick={() => setLibraryOpen(true)} title="Scores (O)">
         <Icon name="scores" /> My scores <span className="nav-count">{BUILT_IN.length + imported.length}</span>
       </button>
+      <button className="nav-item" aria-label="Sessions" onClick={() => setSessionsOpen(true)}><Icon name="history" /> My sessions <span className="nav-count">{history.length}</span></button>
       <div className="sidebar-piece">
         <div className="sidebar-label">ON THE MUSIC DESK</div>
         <div className="score-art" aria-hidden="true"><span>ƒ</span><i /><i /><i /><i /><i /></div>
@@ -524,6 +563,7 @@ export default function App() {
           onClick={() => { if (pass) setNotesMeasure(pass.measure) }}><Icon name="notes" /></button>
         <button className={`icon-button context-button${prefs.context ? ' on' : ''}`} aria-label="Musical context" aria-pressed={prefs.context} title="Musical context (C)"
           onClick={() => updatePrefs({ context: !prefs.context })}><Icon name="context" /></button>
+        <button className="icon-button mobile-sessions" aria-label="Sessions" title="Sessions" onClick={() => setSessionsOpen(true)}><Icon name="history" /></button>
         <button className={`map-button${passagesOpen ? ' on' : ''}`} aria-label="Passage map" aria-expanded={passagesOpen} disabled={!timeline}
           title="Passage map (V)" onClick={() => setPassagesOpen((v) => !v)}><Icon name="map" size={16} /><span>Passages</span></button>
         <button className={`performance-button${performanceView ? ' on' : ''}`} aria-label="Performance view" aria-pressed={performanceView}
@@ -670,6 +710,9 @@ export default function App() {
     {notesMeasure !== null && timeline && <ScoreNotes key={entry?.id} timeline={timeline} annotations={scorePrefs.annotations} initialMeasure={notesMeasure}
       onSave={(annotation: ScoreAnnotation) => updateScorePrefs({ annotations: [...scorePrefs.annotations.filter((a) => a.measure !== annotation.measure), ...(annotation.text || annotation.bookmarked ? [annotation] : [])].sort((a, b) => a.measure - b.measure) })}
       onGo={(measure) => { const first = timeline.passes.findIndex((pass) => pass.measure === measure); if (first >= 0) onPick(timeline.passes[first].time, first, false); setNotesMeasure(null) }} onClose={() => setNotesMeasure(null)} />}
+    {sessionsOpen && <Sessions history={history} current={tracker.current.current} onFinish={() => { p.pause(); finishSession.current('finished') }} onClose={() => setSessionsOpen(false)} />}
+    {recapToast && !sessionsOpen && <div className="session-toast" role="status"><Icon name="check" size={22} /><div><strong>{recapToast.reason === 'completed' ? 'Finished this listen.' : 'A little more music today.'}</strong><span>{recapToast.title} · {listeningTime(recapToast.seconds)}</span></div>
+      <button onClick={() => { setSessionsOpen(true); setRecapToast(null) }}>View recap</button><button className="icon-button" aria-label="Dismiss recap" onClick={() => setRecapToast(null)}><Icon name="close" size={15} /></button></div>}
 
     {help && <div className="backdrop center" onClick={() => setHelp(false)}>
       <div className="help" ref={helpPanel} role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" onClick={(e) => e.stopPropagation()}>
