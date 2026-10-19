@@ -84,6 +84,13 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
 - [x] **Collection**: original score-cover designs, favourites, editable ordered setlists
       with next/previous and automatic playback, and previews of up to eight seconds at
       original tempo — 2026-10-19 (D-40). Search, source filters and sorting remain (D-38).
+- [x] **Score annotations**: notes/bookmarks on printed bars, an editor (A), saved-note
+      navigation and markers that follow the sheet through resizing and transposition —
+      2026-10-19 (D-41). Repeated plays share the printed bar's annotation; named passage
+      loops retain their separate pass addresses (D-39).
+- [x] **Musical context**: optional beat pulse, pedal state from score marks and conservative
+      chord estimates (C), including transposition — 2026-10-19 (D-41). Estimates use the
+      notes in a played bar; ambiguous sets are left blank and source harmony is not read.
 ## Later
 
 - [ ] Bring back the MIDI trainer on top of the reader (parked roadmap, Phase 1 onwards).

@@ -39,6 +39,13 @@ same sampled piano. They pause the main player without changing its settings. Se
 playback starts each score at its beginning without a saved loop, using its saved speed,
 transposition and hand volumes.
 
+The optional context strip (C) shows the counted beat and the score's sustain-pedal state.
+Its chord names are estimates from the notes in each played bar, including transposition.
+Exact common triads and sevenths can be labelled; other or ambiguous sets show a dash.
+Melody and non-chord notes can prevent a label. These estimates do not read source harmony
+and do not recover chord symbols dropped by MuseScore conversion. They never alter notes
+or playback. Jason still needs to judge previews and transitions by ear.
+
 ## Built-in pieces (D-23)
 
 `src/content/scores/*.musicxml`, listed in `BUILT_IN` in `src/reader/library.ts`, and

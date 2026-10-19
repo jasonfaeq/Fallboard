@@ -11,6 +11,7 @@ export interface Prefs {
   noteNames: boolean
   /** decorative key and stage lighting, 0–1 */
   lighting: number
+  context: boolean
   metronome: boolean
   /** accent the first beat of each bar (metronome and count-in) */
   accent: boolean
@@ -35,16 +36,19 @@ export interface Prefs {
 }
 /** a named loop: the first and last pass (an index into `Timeline.passes`, so repeats are told apart) */
 export interface Section { name: string; first: number; last: number }
+/** Source-measure index, shared by every repeat of the same printed bar. */
+export interface ScoreAnnotation { measure: number; text: string; bookmarked: boolean }
 /** `volumes`: staff index → 0–1 (0 = muted); a staff not listed plays at full volume */
 export interface ScorePrefs {
   speed: number; transpose: number; volumes: Record<number, number>; sections: Section[]
   /** where the player was, in score seconds, and the loop as first and last pass */
   position: number; loop: [number, number] | null
+  annotations: ScoreAnnotation[]
 }
 
 export const ROW_CHOICES = [1, 2, 3, 4] as const
-const DEFAULTS: Prefs = { view: 'both', rows: 2, theme: 'paper', noteNames: false, lighting: 0.55, metronome: false, accent: true, countIn: true, countInLength: 1, countInUnit: 'bars', countInLoops: false, volume: 0.8, room: 'off', speedUp: false, speedUpStep: 0.05, speedUpFrom: 0, speedUpTo: 1, split: 0.42, lastScore: '' }
-export const SCORE_DEFAULTS: ScorePrefs = { speed: 1, transpose: 0, volumes: {}, sections: [], position: 0, loop: null }
+const DEFAULTS: Prefs = { view: 'both', rows: 2, theme: 'paper', noteNames: false, lighting: 0.55, context: false, metronome: false, accent: true, countIn: true, countInLength: 1, countInUnit: 'bars', countInLoops: false, volume: 0.8, room: 'off', speedUp: false, speedUpStep: 0.05, speedUpFrom: 0, speedUpTo: 1, split: 0.42, lastScore: '' }
+export const SCORE_DEFAULTS: ScorePrefs = { speed: 1, transpose: 0, volumes: {}, sections: [], position: 0, loop: null, annotations: [] }
 
 function read<T extends object>(key: string, defaults: T): T {
   try {
@@ -69,6 +73,8 @@ export function loadScorePrefs(id: string): ScorePrefs {
   delete saved.muted
   if (!Array.isArray(saved.sections)) saved.sections = []
   saved.sections = saved.sections.filter((s) => s && typeof s.name === 'string' && Number.isInteger(s.first) && s.first >= 0 && Number.isInteger(s.last) && s.last >= s.first)
+  saved.annotations = Array.isArray(saved.annotations) ? saved.annotations.filter((a) => a && Number.isInteger(a.measure) && a.measure >= 0 && typeof a.text === 'string')
+    .map((a) => ({ measure: a.measure, text: a.text.slice(0, 1000), bookmarked: a.bookmarked === true })).filter((a) => a.text || a.bookmarked) : []
   if (typeof saved.position !== 'number' || !(saved.position >= 0)) saved.position = 0
   const loop = saved.loop
   if (!Array.isArray(loop) || !loop.every(Number.isInteger) || loop.length !== 2 || loop[1] < loop[0]) saved.loop = null

@@ -6,7 +6,7 @@ import { Player } from './reader/player'
 import { buildTimeline, passAt, type Timeline } from './reader/timeline'
 import { isMuseScoreFile, museScoreToMusicXml } from './reader/mscz'
 import { BUILT_IN, checkFile, deleteImported, importFile, listImported, loadImported, renameImported, sourceFrom, type ScoreEntry, type ScoreSource } from './reader/library'
-import { ROW_CHOICES, SCORE_DEFAULTS, loadCollection, loadPrefs, loadScorePrefs, saveCollection, savePrefs, saveScorePrefs, type Prefs, type ScorePrefs, type Section, type View } from './reader/prefs'
+import { ROW_CHOICES, SCORE_DEFAULTS, loadCollection, loadPrefs, loadScorePrefs, saveCollection, savePrefs, saveScorePrefs, type Prefs, type ScoreAnnotation, type ScorePrefs, type Section, type View } from './reader/prefs'
 import type { Collection, Setlist } from './reader/collection'
 import SheetView from './ui/SheetView'
 import KeysView from './ui/KeysView'
@@ -20,6 +20,8 @@ import { useDialog } from './ui/useDialog'
 import PassageMap from './ui/PassageMap'
 import { useReducedMotion } from './ui/useReducedMotion'
 import { useScorePreview } from './ui/useScorePreview'
+import ScoreNotes from './ui/ScoreNotes'
+import MusicalContext from './ui/MusicalContext'
 
 declare global {
   interface Window {
@@ -31,7 +33,7 @@ declare global {
 const SHORTCUTS: [string, string][] = [
   ['Space', 'Play / pause'], ['Home', 'Back to the start'], ['← →', 'Previous / next bar'], ['G', 'Go to a bar number'], ['↑ ↓', 'Faster / slower'],
   ['L', 'Loop this bar (Shift+click a bar to stretch the loop)'], ['[ · ]', 'Loop the previous / next saved section'], ['M', 'Metronome'], ['Shift+M', 'Metronome only: mute the music, keep the click'], ['1 – 4', 'Rows of music'],
-  ['S · K · B', 'Sheet · Keys · Both'], ['N', 'Note names'], ['P', 'Performance view'], ['V', 'Passage map'], ['Z', 'Focus mode'], ['F', 'Full screen'], ['O', 'Scores'], ['?', 'This list'],
+  ['S · K · B', 'Sheet · Keys · Both'], ['N', 'Note names'], ['A', 'Notes and bookmarks'], ['C', 'Musical context'], ['P', 'Performance view'], ['V', 'Passage map'], ['Z', 'Focus mode'], ['F', 'Full screen'], ['O', 'Scores'], ['?', 'This list'],
 ]
 const VIEWS: [View, string][] = [['sheet', 'Sheet'], ['keys', 'Keys'], ['both', 'Both']]
 const loopLabel = (first: number, last: number) => first === last ? `Loop bar ${first}` : `Loop bars ${first}–${last}`
@@ -65,6 +67,7 @@ export default function App() {
   const queueRef = useRef(queue); queueRef.current = queue
   const autoPlayScore = useRef<string | null>(null)
   const openRequest = useRef(0)
+  const [notesMeasure, setNotesMeasure] = useState<number | null>(null)
   const preview = useScorePreview(engine.current, p, libraryOpen)
   const [help, setHelp] = useState(false)
   const helpPanel = useRef<HTMLDivElement>(null)
@@ -119,6 +122,7 @@ export default function App() {
     setEntry(next)
     setTimeline(null)
     setLoopPasses(null)
+    setNotesMeasure(null)
     autoPlayScore.current = autoPlay ? next.id : null
     setSource({ key: `${next.id}:${Date.now()}`, data })
     if (closeLibrary) setLibraryOpen(false)
@@ -318,7 +322,7 @@ export default function App() {
   // This timer only fades UI chrome. Music continues to use the audio clock.
   useEffect(() => {
     setControlsHidden(false)
-    if (!performanceView || !p.playing || reducedMotion || libraryOpen || help || settingsOpen || sectionsOpen || goToOpen || passagesOpen) return
+    if (!performanceView || !p.playing || reducedMotion || libraryOpen || help || settingsOpen || sectionsOpen || goToOpen || passagesOpen || notesMeasure !== null) return
     let timer: ReturnType<typeof setTimeout>
     const reveal = () => {
       setControlsHidden(false)
@@ -337,7 +341,7 @@ export default function App() {
       window.removeEventListener('keydown', reveal)
       window.removeEventListener('focusin', reveal)
     }
-  }, [performanceView, p.playing, reducedMotion, libraryOpen, help, settingsOpen, sectionsOpen, goToOpen, passagesOpen])
+  }, [performanceView, p.playing, reducedMotion, libraryOpen, help, settingsOpen, sectionsOpen, goToOpen, passagesOpen, notesMeasure])
 
   // Drag the line between the sheet and the keys.
   const stage = useRef<HTMLElement>(null)
@@ -406,9 +410,10 @@ export default function App() {
   keys.current = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement
     if (e.key === 'Escape') {
-      const panelOpen = help || libraryOpen || settingsOpen || sectionsOpen || goToOpen
+      const panelOpen = help || libraryOpen || settingsOpen || sectionsOpen || goToOpen || notesMeasure !== null
       if (libraryOpen) preview.stop()
       setHelp(false); setLibraryOpen(false); setSettingsOpen(false); setSectionsOpen(false); setGoToOpen(false)
+      setNotesMeasure(null)
       if (!panelOpen) {
         if (passagesOpen) setPassagesOpen(false)
         else { setFocused(false); setPerformanceView(false) }
@@ -430,6 +435,7 @@ export default function App() {
       M: () => p.setMetronomeOnly(!p.metronomeOnly), l: loopHere, '[': () => stepSection(-1), ']': () => stepSection(1), m: () => updatePrefs({ metronome: !prefs.metronome }), n: () => updatePrefs({ noteNames: !prefs.noteNames }),
       s: () => chooseView('sheet'), k: () => chooseView('keys'), b: () => chooseView('both'),
       p: togglePerformance, v: () => { if (timeline) setPassagesOpen((v) => !v) },
+      a: () => { if (timeline) setNotesMeasure(timeline.passes[passAt(timeline, p.time)].measure) }, c: () => updatePrefs({ context: !prefs.context }),
       g: () => { if (timeline) setGoToOpen(true) }, f: toggleFullscreen, z: () => { setPerformanceView(false); setFocused((v) => !v) }, o: () => setLibraryOpen((v) => !v), '?': () => setHelp((v) => !v),
       '1': () => updatePrefs({ rows: 1 }), '2': () => updatePrefs({ rows: 2 }), '3': () => updatePrefs({ rows: 3 }), '4': () => updatePrefs({ rows: 4 }),
     }
@@ -514,6 +520,10 @@ export default function App() {
           aria-label={`${n} row${n > 1 ? 's' : ''}`} onClick={() => updatePrefs({ rows: n })}>{n}</button>)}
       </div>
       <div className="topbar-end">
+        <button className="icon-button" aria-label="Notes and bookmarks" disabled={!timeline} title="Notes and bookmarks (A)"
+          onClick={() => { if (pass) setNotesMeasure(pass.measure) }}><Icon name="notes" /></button>
+        <button className={`icon-button context-button${prefs.context ? ' on' : ''}`} aria-label="Musical context" aria-pressed={prefs.context} title="Musical context (C)"
+          onClick={() => updatePrefs({ context: !prefs.context })}><Icon name="context" /></button>
         <button className={`map-button${passagesOpen ? ' on' : ''}`} aria-label="Passage map" aria-expanded={passagesOpen} disabled={!timeline}
           title="Passage map (V)" onClick={() => setPassagesOpen((v) => !v)}><Icon name="map" size={16} /><span>Passages</span></button>
         <button className={`performance-button${performanceView ? ' on' : ''}`} aria-label="Performance view" aria-pressed={performanceView}
@@ -531,11 +541,13 @@ export default function App() {
     {performanceView && <header className="performance-heading"><div><p className="eyebrow">FALLBOARD · PERFORMANCE</p>
       <h1>{entry?.title ?? 'Your music, centre stage.'}</h1><p>{entry?.composer || entry?.file}</p></div>
       <span>Gold · right hand <span>·</span> Blue · left hand</span></header>}
+    {prefs.context && timeline && <MusicalContext timeline={timeline} time={time} playing={p.state === 'playing'} />}
     <main ref={stage} className={`stage${passagesOpen && timeline ? ' with-passages' : ''}`} style={{ '--keys': `${prefs.split * 100}%` } as React.CSSProperties}>
       <div className={`music-views view-${view}`}>
       <section className="sheet-pane" aria-label="Sheet music" hidden={view === 'keys'}>
         <SheetView source={source?.data ?? null} sourceKey={source?.key ?? ''} rows={prefs.rows} theme={prefs.theme}
           transpose={scorePrefs.transpose} timeline={timeline} time={time} playing={p.playing} loop={loop}
+          annotations={scorePrefs.annotations} onAnnotate={setNotesMeasure}
           onLoaded={onLoaded} onError={(text) => setMessage({ text, error: true })} onPick={onPick} />
       </section>
       {view === 'both' && <div className="divider" role="separator" aria-orientation="horizontal" aria-label="Drag to resize the keys"
@@ -654,6 +666,10 @@ export default function App() {
         setImported(list)
         if (entry?.id === e.id) void open(BUILT_IN[0], false)
       })} />}
+
+    {notesMeasure !== null && timeline && <ScoreNotes key={entry?.id} timeline={timeline} annotations={scorePrefs.annotations} initialMeasure={notesMeasure}
+      onSave={(annotation: ScoreAnnotation) => updateScorePrefs({ annotations: [...scorePrefs.annotations.filter((a) => a.measure !== annotation.measure), ...(annotation.text || annotation.bookmarked ? [annotation] : [])].sort((a, b) => a.measure - b.measure) })}
+      onGo={(measure) => { const first = timeline.passes.findIndex((pass) => pass.measure === measure); if (first >= 0) onPick(timeline.passes[first].time, first, false); setNotesMeasure(null) }} onClose={() => setNotesMeasure(null)} />}
 
     {help && <div className="backdrop center" onClick={() => setHelp(false)}>
       <div className="help" ref={helpPanel} role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" onClick={(e) => e.stopPropagation()}>

@@ -364,3 +364,15 @@ pauses the main player and uses a separate Player on the same audio engine, pres
 the main score, position, loop and speed. Closing the library or hiding the page stops
 the preview. *Explicit previews avoid accidental sound; no service, dependency or new
 content licence is needed. Listening quality and transitions need Jason.*
+
+**D-41 · 2026-10-19 · Printed-bar notes and optional musical context** — A opens notes and
+bookmarks for the current printed bar, stored per score by source measure index. Repeated
+plays share the same note, while passage loops keep their pass addresses (D-32/39). Markers
+use the sheet's measured bar boxes, so resizing, night mode and transposition keep them
+attached to the bar. The editor also lists saved notes and can jump to their first pass.
+C toggles a remembered context strip: the beat follows timeline clicks, and pedal down/up
+uses the same sustain spans as playback. Chord labels are explicitly estimates from all
+written note lengths overlapping a played bar: exact major/minor/diminished triads and
+common seventh sets only, with slash bass; unmatched or ambiguous sets stay blank.
+*This small recogniser is not harmonic analysis, and does not preserve source chord
+symbols lost during MuseScore conversion. Everything follows the transposed timeline.*

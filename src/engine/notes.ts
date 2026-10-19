@@ -23,4 +23,5 @@ const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A�
 export const noteName = (note: number) => `${NAMES[note % 12]}${Math.floor(note / 12) - 1}`
 /** the letter name only, for labels on keys and falling notes */
 export const pitchClass = (note: number) => NAMES[note % 12]
+export const pitchClassNumber = (note: number) => ((note % 12) + 12) % 12
 export const isBlackKey = (note: number) => NAMES[note % 12].length > 1

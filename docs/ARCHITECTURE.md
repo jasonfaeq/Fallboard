@@ -1,6 +1,6 @@
 # Architecture
 
-**Status (2026-10-19): the sheet music reader, as built (D-20–40).** The MIDI trainer's
+**Status (2026-10-19): the sheet music reader, as built (D-20–41).** The MIDI trainer's
 architecture (input, mission runner, matcher, bots) is parked in
 `parked/midi-trainer/docs/ARCHITECTURE.md`. Keep this file true: when you build or change a
 part, describe how it actually works.
@@ -77,6 +77,15 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   main player is paused first and keeps its timeline, speed, loop and position. Only an
   active preview may stop the shared transport; closing an idle library leaves playback
   running. Close/hide cancels previews and pending loads. Previews are excluded from recaps.
+- **Notes and bookmarks** (`ui/ScoreNotes.tsx`, A, D-41): text (up to 1,000 characters) and
+  a bookmark per source measure index, shared by every repeat. The editor selects a printed
+  bar, saves/removes notes and lists them with jump-to-first-pass controls. Markers use
+  SheetView's measured boxes and row bottoms; they reopen the editor without seeking.
+- **Musical context** (`ui/MusicalContext.tsx`, C, D-41): an optional strip follows current
+  timeline clicks and sustain spans for beat/pedal. `reader/context.ts` estimates a chord
+  per played bar from overlapping written note lengths, using exact pitch-class sets for
+  common triads/sevenths. Nonmatches and multiple matches stay blank. Labels are estimates,
+  not imported harmony; transposition is already in the timeline.
 - The scrubber is keyboard accessible: arrows seek five score seconds, Home/End seek to
   start/end. The sheet/keys divider accepts Up/Down for five percentage-point changes
   (20–75 %, remembered); these keys do not also change playback speed.
@@ -234,6 +243,10 @@ For each stop:
 - **Clicks:** `GetNearestStaffEntry` → measure + timestamp → the step of that pass nearest to
   the current time (repeats) → `onPick`. Shift+click stretches a loop from the last picked
   bar; loop bars get an overlay box.
+- **Annotations (D-41)**: source-measure notes/bookmarks get a small button beneath the
+  measured bar box. Layout changes rebuild the marker position; transposition leaves its
+  source-measure address unchanged. The full text lives in the editor rather than over
+  the notation.
 
 ## Keys view (`ui/KeysView.tsx`, `ui/Keyboard.tsx`)
 
@@ -272,11 +285,12 @@ separately. The page pauses playback when it is hidden.
   file name, date) and `data` (the file's bytes; for a MuseScore file, the MusicXML it was
   converted to). If storage fails, the score still opens but is not kept.
 - `reader/prefs.ts`: localStorage `piano-trainer:prefs` (view, rows, theme, note names,
-  lighting, metronome, count-in with its length, unit and Count in each loop, volume, room, Speed up loops with its step, start and target, keys
+  lighting, musical context (off by default), metronome, count-in with its length, unit and Count in each loop, volume, room, Speed up loops with its step, start and target, keys
   split, last score) and `piano-trainer:score:<id>` (speed,
   transposition, each staff's volume as `volumes`; an older `muted` list is read as volume 0;
   saved `sections` as `{ name, first, last }` pass indices, malformed ones dropped; `position`
-  in score seconds and `loop` as `[first, last]` pass indices or null). Score settings are
+  in score seconds and `loop` as `[first, last]` pass indices or null; `annotations` as
+  `{ measure, text, bookmarked }` source-measure entries). Score settings are
   written at once, not in a React state updater, so the page closing still keeps them.
 - `reader/prefs.ts` also owns `fallboard:collection` (favourite score IDs and named ordered
   setlists, sanitised by the pure `reader/collection.ts`). Imported-score deletion removes its collection references.

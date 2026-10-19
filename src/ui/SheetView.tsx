@@ -6,6 +6,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { OpenSheetMusicDisplay, PointF2D, TransposeCalculator, unitInPixels, type MusicSystem, type VexFlowGraphicalNote } from 'opensheetmusicdisplay'
 import { indexAt, type Timeline } from '../reader/timeline'
 import type { ScoreSource } from '../reader/library'
+import type { ScoreAnnotation } from '../reader/prefs'
+import Icon from './Icons'
 
 interface Props {
   source: ScoreSource | null
@@ -18,6 +20,8 @@ interface Props {
   playing: boolean
   /** the looped passes, first and last index into timeline.passes */
   loop: [number, number] | null
+  annotations: ScoreAnnotation[]
+  onAnnotate: (measure: number) => void
   onLoaded: (osmd: OpenSheetMusicDisplay) => void
   onError: (message: string) => void
   /** a click on the music: the time of the clicked note and its pass */
@@ -317,6 +321,15 @@ export default function SheetView(props: Props) {
       {loopBoxes.map((b, i) => {
         const row = layout!.rows[b.row]
         return <div key={i} className="loop-box" style={{ left: b.x, top: row.staffTop - 14, width: b.width, height: row.staffBottom - row.staffTop + 28 }} />
+      })}
+      {layout && props.annotations.map((annotation) => {
+        const box = layout.boxes.get(annotation.measure)
+        if (!box) return null
+        const row = layout.rows[box.row], number = timeline?.passes.find((pass) => pass.measure === annotation.measure)?.number
+        return <button key={annotation.measure} className={`score-note-marker${annotation.bookmarked ? ' bookmarked' : ''}`}
+          aria-label={`${annotation.bookmarked ? 'Bookmark' : 'Note'} on ${number === 0 ? 'pickup' : `bar ${number}`}: ${annotation.text || 'Bookmark'}`}
+          title={annotation.text || 'Bookmarked bar'} style={{ left: box.x + box.width - 24, top: row.staffBottom + 7 }}
+          onClick={(e) => { e.stopPropagation(); props.onAnnotate(annotation.measure) }}><Icon name={annotation.bookmarked ? 'sections' : 'notes'} size={13} /></button>
       })}
       <div className="playhead" ref={playhead} aria-hidden="true" />
     </div>
