@@ -1,6 +1,6 @@
 # Architecture
 
-**Status (2026-10-19): the sheet music reader, as built (D-20–42).** The MIDI trainer's
+**Status (2026-10-19): the sheet music reader, as built (D-20–43).** The MIDI trainer's
 architecture (input, mission runner, matcher, bots) is parked in
 `parked/midi-trainer/docs/ARCHITECTURE.md`. Keep this file true: when you build or change a
 part, describe how it actually works.
@@ -44,6 +44,12 @@ their own modules and the XML parser (`DOMParser`) in `mscz.ts`. `ui/` draws and
   their layout space to avoid a resize; pointer movement, key presses and focus reveal
   them. Open panels and keyboard focus keep them visible. Reduced motion keeps controls
   visible. The UI timer has no role in musical timing.
+  **After hours (D-43)** adds a scene picker in the heading: Walnut studio, Moonlit hall and
+  Velvet room. `ui/StageRoom.tsx` draws original CSS wall panels, an arch or velvet folds
+  behind the falling notes. Each scene sets the stage, frame, engraved fallboard rail,
+  ivory/ebony gradients and case finish. Selection is remembered; performance itself still
+  opens explicitly with P. Scene changes preserve playback and the reading layout. The
+  sound's Room setting stays independent. Scene controls fade with the transport.
 - **Passage map** (V, `ui/PassageMap.tsx`): a side panel, or a panel over the stage on compact
   screens. `reader/passages.ts` groups up to four consecutive played bars, starting another
   group at a repeat or jump. It shows note-attack density and the current position; selecting
@@ -279,6 +285,15 @@ remembered. Muted notes cast no light. `useReducedMotion.ts` listens to the OS p
 reduced motion removes decorative light and key-travel transitions, retaining the musical
 position, falling notes and hand colours. There is no independent music animation clock.
 
+**Sustain ribbons (D-43)** are decorative traces in performance only: when a written note
+ends but its pedal `release` is still ahead, a soft ribbon remains above its lifted key.
+Length and opacity diminish over that note's remaining pedal span, using score time and
+authored velocity. Physical key depression still uses the written `end`. Traces are
+recomputed from the current timeline/time, rather than accumulated as particles, so seeks,
+loops, transposition and mute changes replace them immediately. Lighting at zero and
+reduced motion remove the ribbons and blooms; musical note/key colours remain. Room
+architecture is static. No sound scheduling, sample, reverb or timing changes are involved.
+
 ## Audio (`engine/audio.ts`, `engine/piano.ts`)
 
 `Engine` owns the gesture-started `AudioContext` (`latencyHint: 'interactive'`), master
@@ -298,7 +313,8 @@ separately. The page pauses playback when it is hidden.
   file name, date) and `data` (the file's bytes; for a MuseScore file, the MusicXML it was
   converted to). If storage fails, the score still opens but is not kept.
 - `reader/prefs.ts`: localStorage `piano-trainer:prefs` (view, rows, theme, note names,
-  lighting, musical context (off by default), metronome, count-in with its length, unit and Count in each loop, volume, room, Speed up loops with its step, start and target, keys
+  lighting, `stageScene` (studio/hall/velvet, invalid values fall back to studio), musical
+  context (off by default), metronome, count-in with its length, unit and Count in each loop, volume, room, Speed up loops with its step, start and target, keys
   split, last score) and `piano-trainer:score:<id>` (speed,
   transposition, each staff's volume as `volumes`; an older `muted` list is read as volume 0;
   saved `sections` as `{ name, first, last }` pass indices, malformed ones dropped; `position`
@@ -362,6 +378,12 @@ idle/revealed controls while the audio player keeps advancing, repeated-bar pass
 dragged and keyboard loop boundaries, named passage persistence, pointer key travel and
 voice release, lighting rendering/persistence/reduced motion, and desktop/compact bounds.
 It saves stage and passage-map captures under `.qa/`.
+
+`after-hours.spec.ts` covers remembered scene selection and piano materials, changing scenes
+during playback without changing speed/loop or the audio Room, sustain traces after a key
+lifts, pedal changes, seeks, muting and transposition, Lighting off and reduced motion.
+All three scenes are checked at 1440/1024/768/390/320 px with reachable controls; desktop
+and compact captures live under `.qa/`.
 
 `reader-ideas.spec.ts` exercises favourites and setlist editing/persistence/next/end,
 automatic advancement after completion, preview cancellation and main-score preservation,

@@ -5,6 +5,7 @@ import { cleanCollection, EMPTY_COLLECTION, type Collection } from './collection
 import { validRecap, type SessionRecap } from './sessions'
 
 export type View = 'sheet' | 'keys' | 'both'
+export type StageScene = 'studio' | 'hall' | 'velvet'
 export interface Prefs {
   view: View
   rows: number
@@ -12,6 +13,7 @@ export interface Prefs {
   noteNames: boolean
   /** decorative key and stage lighting, 0–1 */
   lighting: number
+  stageScene: StageScene
   context: boolean
   metronome: boolean
   /** accent the first beat of each bar (metronome and count-in) */
@@ -48,7 +50,7 @@ export interface ScorePrefs {
 }
 
 export const ROW_CHOICES = [1, 2, 3, 4] as const
-const DEFAULTS: Prefs = { view: 'both', rows: 2, theme: 'paper', noteNames: false, lighting: 0.55, context: false, metronome: false, accent: true, countIn: true, countInLength: 1, countInUnit: 'bars', countInLoops: false, volume: 0.8, room: 'off', speedUp: false, speedUpStep: 0.05, speedUpFrom: 0, speedUpTo: 1, split: 0.42, lastScore: '' }
+const DEFAULTS: Prefs = { view: 'both', rows: 2, theme: 'paper', noteNames: false, lighting: 0.55, stageScene: 'studio', context: false, metronome: false, accent: true, countIn: true, countInLength: 1, countInUnit: 'bars', countInLoops: false, volume: 0.8, room: 'off', speedUp: false, speedUpStep: 0.05, speedUpFrom: 0, speedUpTo: 1, split: 0.42, lastScore: '' }
 export const SCORE_DEFAULTS: ScorePrefs = { speed: 1, transpose: 0, volumes: {}, sections: [], position: 0, loop: null, annotations: [] }
 
 function read<T extends object>(key: string, defaults: T): T {
@@ -64,6 +66,7 @@ function write(key: string, value: unknown) {
 export const loadPrefs = () => {
   const prefs = read('piano-trainer:prefs', DEFAULTS)
   prefs.lighting = typeof prefs.lighting === 'number' && Number.isFinite(prefs.lighting) ? Math.max(0, Math.min(1, prefs.lighting)) : DEFAULTS.lighting
+  if (!['studio', 'hall', 'velvet'].includes(prefs.stageScene)) prefs.stageScene = DEFAULTS.stageScene
   return prefs
 }
 export const savePrefs = (prefs: Prefs) => write('piano-trainer:prefs', prefs)

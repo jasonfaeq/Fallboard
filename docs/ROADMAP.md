@@ -79,6 +79,12 @@ with its code: `parked/midi-trainer/docs/ROADMAP.md` (D-20).
       navigation, draggable/keyboard loop handles and saved names — 2026-10-19 (D-39).
       *Needs Jason: judge the stage at the piano, lighting comfort and sound by ear.*
 
+- [x] **After hours**: Walnut studio, Moonlit hall and Velvet room scenes, remembered scene
+      selection, matching ivory/ebony/case finishes and an engraved fallboard rail; sustain
+      ribbons follow pedal releases after physical keys lift — 2026-10-19 (D-43). Lighting
+      and reduced motion control the decoration. *Needs Jason: judge scene readability
+      and lighting comfort at the piano, and confirm the visual pedal tails against sound.*
+
 ## Reader ideas — built 2026-10-19
 
 - [x] **Collection**: original score-cover designs, favourites, editable ordered setlists

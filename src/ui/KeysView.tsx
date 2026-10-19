@@ -3,8 +3,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { MAX_VELOCITY, pitchClass } from '../engine/notes'
 import { indexAt, type Timeline } from '../reader/timeline'
+import type { StageScene } from '../reader/prefs'
 import Keyboard, { keyLayout, keyRange } from './Keyboard'
 import { useReducedMotion } from './useReducedMotion'
+import StageRoom from './StageRoom'
 
 interface Props {
   timeline: Timeline | null
@@ -15,6 +17,7 @@ interface Props {
   pressed: ReadonlySet<number>
   lighting: number
   performanceView: boolean
+  stageScene: StageScene
   onPress: (note: number) => void
   onRelease: (note: number) => void
 }
@@ -22,7 +25,7 @@ interface Props {
 /** score seconds shown above the keyboard */
 const WINDOW = 3.2
 
-export default function KeysView({ timeline, time, names, muted, pressed, lighting, performanceView, onPress, onRelease }: Props) {
+export default function KeysView({ timeline, time, names, muted, pressed, lighting, performanceView, stageScene, onPress, onRelease }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
@@ -32,6 +35,7 @@ export default function KeysView({ timeline, time, names, muted, pressed, lighti
   const keys = useMemo(() => keyLayout(low, high), [low, high])
   const byNote = useMemo(() => new Map(keys.map((k) => [k.note, k])), [keys])
   const longest = useMemo(() => timeline?.sounds.reduce((max, s) => Math.max(max, s.end - s.time), 0) ?? 0, [timeline])
+  const longestRelease = useMemo(() => timeline?.sounds.reduce((max, s) => Math.max(max, s.release - s.time), 0) ?? 0, [timeline])
   const whites = keys.filter((k) => !k.black).length
   const keyboardHeight = Math.round(Math.max(56, Math.min(performanceView ? 180 : 150, size.width / whites * (performanceView ? 4.8 : 4.2), size.height * 0.5)))
   const rollHeight = Math.max(0, size.height - keyboardHeight)
@@ -46,14 +50,19 @@ export default function KeysView({ timeline, time, names, muted, pressed, lighti
   // Which keys the score is playing now: unmuted staves only.
   const lit = new Map<number, number>()
   const energy = new Map<number, number>()
+  const sustained = new Map<number, { staff: number; energy: number; remaining: number }>()
   if (timeline) {
     const { sounds } = timeline
-    for (let i = indexAt(sounds, time); i >= 0 && sounds[i].time >= time - longest - 1e-6; i--) {
+    const lookBack = performanceView && ambient > 0 ? longestRelease : longest
+    for (let i = indexAt(sounds, time); i >= 0 && sounds[i].time >= time - lookBack - 1e-6; i--) {
       const s = sounds[i]
       if (muted.has(s.staff)) continue
       if (s.end > time + 1e-6 && !lit.has(s.midi)) {
         lit.set(s.midi, s.staff)
         energy.set(s.midi, s.velocity / MAX_VELOCITY)
+      } else if (performanceView && ambient > 0 && s.end <= time + 1e-6 && s.release > time + 1e-6 && !sustained.has(s.midi)) {
+        sustained.set(s.midi, { staff: s.staff, energy: s.velocity / MAX_VELOCITY,
+          remaining: (s.release - time) / (s.release - s.end) })
       }
     }
   }
@@ -76,6 +85,24 @@ export default function KeysView({ timeline, time, names, muted, pressed, lighti
     const colours = [colour('--right'), colour('--left'), colour('--other')]
     const perSecond = h / WINDOW
     const y = (t: number) => h - (t - time) * perSecond
+
+    // A key lifts at its written end; its light can linger until the score's pedal lifts.
+    // Recomputed from score time on every draw, so seeks, repeats and transposition cannot
+    // leave particles from an earlier position behind.
+    if (ambient > 0) for (const [note, tail] of sustained) {
+      if (lit.has(note)) continue
+      const key = byNote.get(note)
+      if (!key) continue
+      const width = Math.max(3, key.width * w * .72), x = (key.x + key.width / 2) * w - width / 2
+      const height = Math.min(h * .48, 65 + tail.energy * 95) * (.45 + tail.remaining * .55)
+      const fill = colours[Math.min(tail.staff, 2)]
+      const ribbon = ctx.createLinearGradient(0, h - height, 0, h)
+      ribbon.addColorStop(0, 'transparent'); ribbon.addColorStop(.75, fill); ribbon.addColorStop(1, fill)
+      ctx.fillStyle = ribbon; ctx.globalAlpha = ambient * (.12 + tail.remaining * .28) * tail.energy
+      ctx.shadowColor = fill; ctx.shadowBlur = 18 * ambient
+      ctx.beginPath(); ctx.roundRect(x, h - height, width, height, Math.min(width / 2, 6)); ctx.fill()
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0
 
     // The light follows actual active score notes and their authored dynamics. It has no
     // independent animation clock, and no analyser or extra audio processing is needed.
@@ -174,11 +201,14 @@ export default function KeysView({ timeline, time, names, muted, pressed, lighti
     ctx.globalAlpha = 0.7
     ctx.fillRect(0, h - 1.5, w, 1.5)
     ctx.globalAlpha = 1
-  }, [time, size, rollHeight, timeline, keys, byNote, longest, names, muted, pressed, ambient, performanceView])
+  }, [time, size, rollHeight, timeline, keys, byNote, longest, names, muted, pressed, ambient, performanceView, stageScene])
 
   return <div className="keys" ref={box} data-testid="keys" data-lighting={ambient} style={{ '--lighting': ambient } as React.CSSProperties}
-    data-lit={[...lit.keys()].sort((a, b) => a - b).join(',')}>
+    data-lit={[...lit.keys()].sort((a, b) => a - b).join(',')}
+    data-sustained={[...sustained.keys()].filter((note) => !lit.has(note)).sort((a, b) => a - b).join(',')}>
+    {performanceView && <StageRoom />}
     <canvas ref={canvas} style={{ height: rollHeight }} aria-label="Falling notes" role="img" />
+    {performanceView && <div className="stage-fallboard" style={{ bottom: keyboardHeight }} aria-hidden="true"><span>F A L L B O A R D</span></div>}
     {size.width > 0 && <Keyboard keys={keys} width={size.width} height={keyboardHeight} lit={lit} names={names} onPress={onPress} onRelease={onRelease} />}
   </div>
 }

@@ -387,3 +387,21 @@ intervals shorter than a quarter second are discarded. Completion offers a restr
 View recap notice. Dates only label the history; they never decide note timing or
 listening duration. *These are reader activity records, with no grades or claims about
 what Jason played, heard, or learned.*
+
+**D-43 · 2026-10-19 · After hours gives Performance a room and a piano finish** — Jason
+selected After hours and approved building it. The three scenes are Walnut studio,
+Moonlit hall and Velvet room, chosen in the performance heading and remembered globally.
+Their architecture and finishes are original CSS/SVG: wall panels, a moonlit arch or
+curtain folds, matching ivory/ebony and case colours, and an engraved fallboard rail.
+Gold/blue hand colours remain fixed; reading views retain their existing surfaces.
+Scene changes never change the audio Room, playback, speed or loops. *These are visual
+settings, with no downloaded assets or dependencies.*
+
+In performance, a note released from its physical key can leave a soft sustain ribbon
+until the score's pedal release. Ribbons use `Timeline.sounds.release`, the same score
+position and authored velocities as playback, fading over the remaining sustain span.
+They are computed afresh on each draw, with no independent musical timer or lingering
+particle state. Lighting at zero and reduced motion suppress them; keys still lift at
+their written ends and musical colours remain readable. The scene architecture is static,
+and its controls fade with the transport. *The piano sound and score timing stay as built;
+Jason needs to judge the visual comfort and pedal correspondence at his piano.*

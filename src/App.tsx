@@ -12,6 +12,7 @@ import { SessionTracker, type SessionEnd, type SessionRecap } from './reader/ses
 import { buildPassages, passageLabel } from './reader/passages'
 import SheetView from './ui/SheetView'
 import KeysView from './ui/KeysView'
+import { StageScenePicker } from './ui/StageRoom'
 import Library from './ui/Library'
 import Scrubber, { clock } from './ui/Scrubber'
 import Settings from './ui/Settings'
@@ -505,7 +506,7 @@ export default function App() {
   const speed = Math.round(p.speed * 100)
   const view = performanceView ? 'keys' : prefs.view
 
-  return <div className={`app${focused ? ' is-focused' : ''}${performanceView ? ' is-performance' : ''}${controlsHidden ? ' controls-hidden' : ''}`}
+  return <div className={`app${focused ? ' is-focused' : ''}${performanceView ? ' is-performance' : ''}${controlsHidden ? ' controls-hidden' : ''}`} data-stage-scene={prefs.stageScene}
     onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDropping(true) } }}
     onDragLeave={(e) => { if (e.currentTarget === e.target) setDropping(false) }}
     onDrop={(e) => { e.preventDefault(); setDropping(false); void importFiles(e.dataTransfer.files) }}>
@@ -578,9 +579,10 @@ export default function App() {
       </div>
     </div>
 
-    {performanceView && <header className="performance-heading"><div><p className="eyebrow">FALLBOARD · PERFORMANCE</p>
+    {performanceView && <header className="performance-heading"><div><p className="eyebrow">FALLBOARD · AFTER HOURS</p>
       <h1>{entry?.title ?? 'Your music, centre stage.'}</h1><p>{entry?.composer || entry?.file}</p></div>
-      <span>Gold · right hand <span>·</span> Blue · left hand</span></header>}
+      <div className="performance-tools"><StageScenePicker scene={prefs.stageScene} onScene={(stageScene) => updatePrefs({ stageScene })} />
+        <span className="performance-hands">Gold · right hand <span>·</span> Blue · left hand</span></div></header>}
     {prefs.context && timeline && <MusicalContext timeline={timeline} time={time} playing={p.state === 'playing'} />}
     <main ref={stage} className={`stage${passagesOpen && timeline ? ' with-passages' : ''}`} style={{ '--keys': `${prefs.split * 100}%` } as React.CSSProperties}>
       <div className={`music-views view-${view}`}>
@@ -601,7 +603,7 @@ export default function App() {
         onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)} onPointerMove={dragSplit}
         onDoubleClick={() => updatePrefs({ split: 0.42 })}><span /><small>KEYS</small><span /></div>}
       {view !== 'sheet' && <section className="keys-pane" aria-label="Keys">
-        <KeysView timeline={timeline} time={time} names={prefs.noteNames} muted={muted} pressed={pressed} lighting={prefs.lighting} performanceView={performanceView}
+        <KeysView timeline={timeline} time={time} names={prefs.noteNames} muted={muted} pressed={pressed} lighting={prefs.lighting} performanceView={performanceView} stageScene={prefs.stageScene}
           onPress={(n) => void press(n)} onRelease={release} />
       </section>}
       </div>
