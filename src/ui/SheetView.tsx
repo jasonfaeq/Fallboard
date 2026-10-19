@@ -162,6 +162,11 @@ export default function SheetView(props: Props) {
     const osmd = osmdRef.current
     if (!osmd || !loaded.current || shownTranspose.current === transpose) return
     shownTranspose.current = transpose
+    // updateGraphic replaces OSMD's layout model. While the sheet is hidden (Keys /
+    // Performance), draw() waits for a visible panel; the old SVG cannot be measured
+    // against that new model in the meantime.
+    rendered.current = ''
+    setLayout(null)
     osmd.Sheet.Transpose = transpose
     osmd.updateGraphic()
     callbacks.current.onLoaded(osmd)

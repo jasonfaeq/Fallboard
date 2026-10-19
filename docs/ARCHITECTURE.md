@@ -246,6 +246,9 @@ For each stop:
   timeline step via `GraphicSheet.calculateXPositionFromTimestamp`, measure boxes, and the
   SVG group of each mark (`findGraphicalStaffEntryFromMeasureList` →
   `findGraphicalNoteFromNote` → `getSVGGElement`).
+  Transposition invalidates the old map before OSMD replaces its graphic model. When the
+  sheet is hidden in Keys/Performance, measurement waits for a fresh visible render rather
+  than combining the old SVG with the new model's empty systems.
 - **Every frame:** the playhead glides between step anchors (to the bar line before a new
   line or a repeat). Sounding notes get `lit-0/1/2` classes; the CSS colours win over the
   SVG's fill attributes. While playing, the current row is scrolled to the top (smooth), or
